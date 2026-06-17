@@ -216,7 +216,7 @@ body { min-height: 100vh; }
 .detail .actions.danger { margin-top: 14px; grid-template-columns: 1fr; }
 
 .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 8px 4px 0; }
-.bar-chart .bar { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.bar-chart .bar { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .bar-chart-scroll {
   overflow-x: auto;
   overflow-y: hidden;
@@ -230,8 +230,16 @@ body { min-height: 100vh; }
   border-radius: 6px 6px 0 0; min-height: 4px; position: relative;
 }
 .bar-chart .bar-value {
-  position: absolute; top: -16px; left: 0; right: 0; text-align: center;
-  font-size: 10px; color: var(--hint);
+  font-size: 10px; color: var(--text);
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  /* Allow the short labels to render even at 22px bar width */
+  text-align: center;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .bar-chart .bar-label { font-size: 11px; color: var(--hint); }
 
@@ -367,6 +375,8 @@ body { min-height: 100vh; }
 .report-summary__dates { color: var(--hint); font-size: 13px; }
 
 .best-day .v { color: var(--good); }
+.best-day-kv { padding-right: 6px; }
+.best-day-kv .k { padding-right: 16px; }
 
 @media (min-width: 540px) {
   .modal { border-radius: 18px; margin-bottom: 8vh; align-self: center; }

@@ -23,6 +23,35 @@ export function fmtMoney(n) {
   );
 }
 
+/**
+ * Compact money formatter for chart labels where space is tight.
+ *   999       -> "999"
+ *   1 200     -> "1,2k"
+ *   12 500    -> "12,5k"
+ *   150 000   -> "150k"
+ *   1 200 000 -> "1,2M"
+ */
+export function fmtMoneyShort(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '—';
+  const abs = Math.abs(v);
+  if (abs < 1000) {
+    return v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' \u20bd';
+  }
+  if (abs < 1_000_000) {
+    const k = v / 1000;
+    return (
+      k.toLocaleString('ru-RU', { maximumFractionDigits: 1, minimumFractionDigits: 0 }) +
+      'k \u20bd'
+    );
+  }
+  const m = v / 1_000_000;
+  return (
+    m.toLocaleString('ru-RU', { maximumFractionDigits: 1, minimumFractionDigits: 0 }) +
+    'M \u20bd'
+  );
+}
+
 export function fmtNumber(n) {
   return Number(n || 0).toLocaleString('ru-RU');
 }

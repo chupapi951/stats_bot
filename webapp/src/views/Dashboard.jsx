@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../api.js';
-import { fmtMoney, fmtNumber, fmtDayShort, statusLabel, fmtDate } from '../format.js';
+import { fmtMoney, fmtMoneyShort, fmtNumber, fmtDayShort, statusLabel, fmtDate } from '../format.js';
 import { hapticImpact } from '../telegram.jsx';
 
 export default function Dashboard() {
@@ -106,8 +106,6 @@ export default function Dashboard() {
 function BarChart({ days }) {
   if (!days.length) return <div className="empty">Нет данных</div>;
   const max = Math.max(1, ...days.map((d) => d.profit));
-  // Same adaptive sizing as Report: wider bars for short ranges,
-  // narrower for longer ones (week → ~7 wide bars, month → ~30 narrow).
   const barWidth = days.length > 14 ? 22 : days.length > 7 ? 36 : 48;
   const chartWidth = days.length * (barWidth + 8);
   return (
@@ -119,11 +117,10 @@ function BarChart({ days }) {
             ? new Date(d.from).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
             : fmtDayShort(d.date);
           return (
-            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }}>
-              <div className="bar-fill" style={{ height: `${h}px` }}>
-                <div className="bar-value">{d.profit > 0 ? fmtMoney(d.profit) : ''}</div>
-              </div>
+            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }} title={fmtMoney(d.profit)}>
+              <div className="bar-fill" style={{ height: `${h}px` }} />
               <div className="bar-label">{label}</div>
+              <div className="bar-value">{fmtMoneyShort(d.profit)}</div>
             </div>
           );
         })}

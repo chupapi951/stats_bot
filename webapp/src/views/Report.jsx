@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useApi } from '../api.js';
-import { fmtMoney, fmtNumber, fmtDayShort } from '../format.js';
+import { fmtMoney, fmtMoneyShort, fmtNumber, fmtDayShort } from '../format.js';
 import PeriodSelector from '../components/PeriodSelector.jsx';
 
 export default function Report() {
@@ -80,7 +80,7 @@ export default function Report() {
       {data.bestDay && data.bestDay.profit > 0 && (
         <div className="card best-day">
           <h3>Лучший период</h3>
-          <div className="kv">
+          <div className="kv best-day-kv">
             <span className="k">{data.bestDay.dateText}</span>
             <span className="v">{fmtMoney(data.bestDay.profit)}</span>
           </div>
@@ -125,7 +125,6 @@ function Delta({ info }) {
 function BarChart({ days }) {
   if (!days.length) return <div className="empty">Нет данных</div>;
   const max = Math.max(1, ...days.map((d) => d.profit));
-  // Wider bar = fewer days shown at once; narrower = more. Min 22px per bar.
   const barWidth = days.length > 14 ? 22 : days.length > 7 ? 36 : 48;
   const chartWidth = days.length * (barWidth + 8);
   return (
@@ -137,11 +136,10 @@ function BarChart({ days }) {
             ? new Date(d.from).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
             : fmtDayShort(d.date);
           return (
-            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }}>
-              <div className="bar-fill" style={{ height: `${h}px` }}>
-                <div className="bar-value">{d.profit > 0 ? fmtMoney(d.profit) : ''}</div>
-              </div>
+            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }} title={fmtMoney(d.profit)}>
+              <div className="bar-fill" style={{ height: `${h}px` }} />
               <div className="bar-label">{label}</div>
+              <div className="bar-value">{fmtMoneyShort(d.profit)}</div>
             </div>
           );
         })}
