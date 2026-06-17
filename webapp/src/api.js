@@ -4,24 +4,20 @@ import { mockApi } from './mockApi.js';
 const REAL_API = 'http://127.0.0.1:3000';
 
 function isMockMode() {
+  // Delegate to the shared detectMock in telegram.jsx (imported as isMockMode)
+  // This is kept for backward compatibility — real logic is in telegram.jsx
   if (typeof window === 'undefined') return false;
-  // 1. explicit override
   if (window.__STATS_BOT_MOCK__ === true) return true;
   if (window.__STATS_BOT_MOCK__ === false) return false;
-  // 2. ?mock=1 in URL
   try {
     const u = new URL(window.location.href);
-    if (u.searchParams.get('mock') === '1') {
-      window.__STATS_BOT_MOCK__ = true;
-      return true;
-    }
-    if (u.searchParams.get('mock') === '0') {
-      window.__STATS_BOT_MOCK__ = false;
-      return false;
-    }
+    if (u.searchParams.get('mock') === '1') { window.__STATS_BOT_MOCK__ = true; return true; }
+    if (u.searchParams.get('mock') === '0') { window.__STATS_BOT_MOCK__ = false; return false; }
   } catch (_) {}
-  // 3. auto: no Telegram SDK
-  if (!window.Telegram || !window.Telegram.WebApp) {
+  // Auto-mock only on localhost, never in production
+  const hostname = window.location.hostname;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
+  if (isLocal && (!window.Telegram || !window.Telegram.WebApp)) {
     window.__STATS_BOT_MOCK__ = true;
     return true;
   }

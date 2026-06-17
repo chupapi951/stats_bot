@@ -9,7 +9,10 @@ function detectMock() {
     if (u.searchParams.get('mock') === '1') { window.__STATS_BOT_MOCK__ = true; return true; }
     if (u.searchParams.get('mock') === '0') { window.__STATS_BOT_MOCK__ = false; return false; }
   } catch (_) {}
-  if (!window.Telegram || !window.Telegram.WebApp) {
+  // Auto-mock ONLY in local dev (localhost / 127.x), never on production
+  const hostname = window.location.hostname;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
+  if (isLocal && (!window.Telegram || !window.Telegram.WebApp)) {
     window.__STATS_BOT_MOCK__ = true;
     return true;
   }
