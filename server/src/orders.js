@@ -150,9 +150,12 @@ async function computeStats(userId, from, to) {
   // Revenue / cost / profit:
   //   - actual:    counted ONLY for completed orders
   //   - potential: counted for created + shipped orders (still in pipeline).
-  //     For these the order's `profit` field is null until completion, so we
-  //     compute it inline as sellingPrice - costPrice.
+  //     For these the order's `profit` field is null until completion, so
+  //     we compute the potential profit as sellingPrice - costPrice.
   // Returned orders are tracked separately via counts.returned + returnRate.
+  //
+  // Aggregation is split into two queries to keep compatibility with the
+  // lightweight file-backed store (which only supports $sum, no $cond/$subtract).
   const moneyAgg = await db
     .collection('orders')
     .aggregate([
@@ -167,23 +170,10 @@ async function computeStats(userId, from, to) {
           _id: '$status',
           revenue: { $sum: '$sellingPrice' },
           cost: { $sum: '$costPrice' },
-          // Use $ifNull so null profits (created/shipped) are computed inline
-          // as sellingPrice - costPrice. The result is the expected profit
-          // if the order is eventually completed.
-          profit: {
-            $sum: {
-              $add: [
-                { $ifNull: ['$profit', 0] },
-                {
-                  $cond: [
-                    { $in: ['$status', ['created', 'shipped']] },
-                    { $subtract: ['$sellingPrice', '$costPrice'] },
-                    0
-                  ]
-                }
-              ]
-            }
-          }
+          // Use the stored `profit` field (set on completed orders).
+          // For created/shipped, the field is null — we treat that as 0 here
+          // and compute the *potential* profit in JS below.
+          profit: { $sum: '$profit' }
         }
       }
     ])
@@ -203,8 +193,12 @@ async function computeStats(userId, from, to) {
   const revenue = byStatusMoney.completed.revenue;
   const cost = byStatusMoney.completed.cost;
   const profit = byStatusMoney.completed.profit;
+  // For created/shipped, `profit` is null until completion. We compute the
+  // expected profit inline as sellingPrice - costPrice so the totals and
+  // chart reflect what the order *would* yield if it gets completed.
   const potentialRevenue = (byStatusMoney.created.revenue || 0) + (byStatusMoney.shipped.revenue || 0);
-  const potentialProfit  = (byStatusMoney.created.profit  || 0) + (byStatusMoney.shipped.profit  || 0);
+  const potentialProfit  = ((byStatusMoney.created.revenue || 0) - (byStatusMoney.created.cost || 0)) +
+                           ((byStatusMoney.shipped.revenue || 0) - (byStatusMoney.shipped.cost || 0));
 
   // top products by profit (completed only)
   const topProducts = await db
@@ -273,8 +267,10 @@ async function profitByBuckets(userId, from, to) {
   const out = [];
   for (const b of buckets) {
     // Split by status so the bar chart can render actual vs potential stacks.
-    // For created/shipped, profit is null — compute it inline as
-    // sellingPrice - costPrice.
+    // For created/shipped, the `profit` field is null; we compute it in JS
+    // after the aggregation as sellingPrice - costPrice. Aggregation here
+    // only collects revenue/cost per status to stay compatible with the
+    // file-backed store (which doesn't support $cond/$subtract).
     const agg = await db
       .collection('orders')
       .aggregate([
@@ -288,36 +284,28 @@ async function profitByBuckets(userId, from, to) {
         {
           $group: {
             _id: '$status',
-            profit: {
-              $sum: {
-                $add: [
-                  { $ifNull: ['$profit', 0] },
-                  {
-                    $cond: [
-                      { $in: ['$status', ['created', 'shipped']] },
-                      { $subtract: ['$sellingPrice', '$costPrice'] },
-                      0
-                    ]
-                  }
-                ]
-              }
-            },
+            revenue: { $sum: '$sellingPrice' },
+            cost: { $sum: '$costPrice' },
+            profit: { $sum: '$profit' },
             count: { $sum: 1 }
           }
         }
       ])
       .toArray();
-    const byStatus = { created: { profit: 0, count: 0 },
-                       shipped: { profit: 0, count: 0 },
-                       completed: { profit: 0, count: 0 } };
+    const byStatus = { created: { revenue: 0, cost: 0, profit: 0, count: 0 },
+                       shipped: { revenue: 0, cost: 0, profit: 0, count: 0 },
+                       completed: { revenue: 0, cost: 0, profit: 0, count: 0 } };
     for (const r of agg) {
       if (byStatus[r._id]) {
+        byStatus[r._id].revenue = r.revenue || 0;
+        byStatus[r._id].cost = r.cost || 0;
         byStatus[r._id].profit = r.profit || 0;
         byStatus[r._id].count = r.count || 0;
       }
     }
     const actualProfit    = byStatus.completed.profit;
-    const potentialProfit = (byStatus.created.profit || 0) + (byStatus.shipped.profit || 0);
+    const potentialProfit = ((byStatus.created.revenue || 0) - (byStatus.created.cost || 0)) +
+                            ((byStatus.shipped.revenue || 0) - (byStatus.shipped.cost || 0));
     out.push({
       from: b.from.toISOString(),
       to: b.to.toISOString(),
