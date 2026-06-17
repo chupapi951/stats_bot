@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function ymdLocal(d) {
   const y = d.getFullYear();
@@ -35,14 +35,52 @@ const PRESETS = [
   { id: 'lastMonth',    label: 'Прошлый месяц' }
 ];
 
+/**
+ * Compute which preset is active for a given [from, to] range.
+ * Returns 'custom' when no preset matches.
+ */
+function detectPreset(fromIso, toIso) {
+  if (!fromIso || !toIso) return 'currentWeek';
+  const from = new Date(fromIso);
+  const to = new Date(toIso);
+  const today = new Date();
+
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  // Current week
+  const cw = startOfWeek(today), cwe = endOfWeek(today);
+  if (sameDay(from, cw) && sameDay(to, cwe)) return 'currentWeek';
+  // Last week
+  const lw = new Date(today); lw.setDate(lw.getDate() - 7);
+  const lwS = startOfWeek(lw), lwE = endOfWeek(lw);
+  if (sameDay(from, lwS) && sameDay(to, lwE)) return 'lastWeek';
+  // Current month
+  const cm = startOfMonth(today), cme = endOfMonth(today);
+  if (sameDay(from, cm) && sameDay(to, cme)) return 'currentMonth';
+  // Last month
+  const lm = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const lmS = startOfMonth(lm), lmE = endOfMonth(lm);
+  if (sameDay(from, lmS) && sameDay(to, lmE)) return 'lastMonth';
+
+  return 'custom';
+}
+
 export default function PeriodSelector({ value, onChange }) {
   const today = new Date();
-  const [preset, setPreset] = useState('currentWeek');
-  const [customFrom, setCustomFrom] = useState(value?.from || ymdLocal(startOfWeek(today)));
-  const [customTo,   setCustomTo]   = useState(value?.to   || ymdLocal(endOfWeek(today)));
+  const [preset, setPreset] = useState(() => detectPreset(value?.from, value?.to));
+  const [customFrom, setCustomFrom] = useState(value?.from ? ymdLocal(new Date(value.from)) : ymdLocal(startOfWeek(today)));
+  const [customTo,   setCustomTo]   = useState(value?.to   ? ymdLocal(new Date(value.to))   : ymdLocal(endOfWeek(today)));
+
+  // Keep the active preset in sync with the current range (covers external changes
+  // like Report's initial range or a custom range applied via "Применить").
+  useEffect(() => {
+    setPreset(detectPreset(value?.from, value?.to));
+  }, [value?.from, value?.to]);
 
   const apply = (id) => {
-    setPreset(id);
     let from, to;
     if (id === 'currentWeek')  { from = startOfWeek(today);  to = endOfWeek(today); }
     else if (id === 'lastWeek') {

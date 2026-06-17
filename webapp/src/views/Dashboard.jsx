@@ -106,19 +106,28 @@ export default function Dashboard() {
 function BarChart({ days }) {
   if (!days.length) return <div className="empty">Нет данных</div>;
   const max = Math.max(1, ...days.map((d) => d.profit));
+  // Same adaptive sizing as Report: wider bars for short ranges,
+  // narrower for longer ones (week → ~7 wide bars, month → ~30 narrow).
+  const barWidth = days.length > 14 ? 22 : days.length > 7 ? 36 : 48;
+  const chartWidth = days.length * (barWidth + 8);
   return (
-    <div className="bar-chart">
-      {days.map((d, i) => {
-        const h = Math.max(4, (d.profit / max) * 140);
-        return (
-          <div key={i} className="bar">
-            <div className="bar-fill" style={{ height: `${h}px` }}>
-              <div className="bar-value">{d.profit > 0 ? fmtMoney(d.profit) : ''}</div>
+    <div className="bar-chart-scroll">
+      <div className="bar-chart" style={{ minWidth: chartWidth, height: 160 }}>
+        {days.map((d, i) => {
+          const h = Math.max(4, (d.profit / max) * 140);
+          const label = d.from
+            ? new Date(d.from).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+            : fmtDayShort(d.date);
+          return (
+            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }}>
+              <div className="bar-fill" style={{ height: `${h}px` }}>
+                <div className="bar-value">{d.profit > 0 ? fmtMoney(d.profit) : ''}</div>
+              </div>
+              <div className="bar-label">{label}</div>
             </div>
-            <div className="bar-label">{fmtDayShort(d.date)}</div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
