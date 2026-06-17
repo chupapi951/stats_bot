@@ -89,7 +89,7 @@ export default function AddOrderModal({ api, onClose, onCreated }) {
           />
         </div>
 
-        <div className="field">
+        <div className="field field--date-toggle">
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -99,19 +99,18 @@ export default function AddOrderModal({ api, onClose, onCreated }) {
             <span>Указать дату создания</span>
           </label>
           {useCustomDate && (
-            <input
-              type="date"
-              value={createdDate}
-              max={todayISO()}
-              onChange={(e) => setCreatedDate(e.target.value)}
-              style={{ marginTop: 6 }}
-            />
-          )}
-          {useCustomDate && (
-            <div style={{ fontSize: 12, color: 'var(--hint)', marginTop: 4 }}>
-              {createdDate ? new Date(`${createdDate}T12:00:00`).toLocaleDateString('ru-RU', {
-                day: 'numeric', month: 'long', year: 'numeric'
-              }) : 'выберите дату'}
+            <div className="date-picker">
+              <input
+                type="date"
+                value={createdDate}
+                max={todayISO()}
+                onChange={(e) => setCreatedDate(e.target.value)}
+              />
+              <div className="date-picker__hint">
+                {createdDate ? new Date(`${createdDate}T12:00:00`).toLocaleDateString('ru-RU', {
+                  day: 'numeric', month: 'long', year: 'numeric', weekday: 'short'
+                }) : 'выберите дату'}
+              </div>
             </div>
           )}
         </div>
