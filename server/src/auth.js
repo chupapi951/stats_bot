@@ -55,6 +55,13 @@ function validateInitData(initData, botToken) {
     .digest('hex');
 
   if (computed !== hash) {
+    if (process.env.AUTH_DEBUG) {
+      console.error('[auth] HMAC mismatch');
+      console.error('[auth] dataCheckString:', JSON.stringify(dataCheckString));
+      console.error('[auth] expected hash:  ', hash);
+      console.error('[auth] computed hash: ', computed);
+      console.error('[auth] raw initData:   ', initData);
+    }
     return { valid: false, user: null };
   }
 
@@ -105,6 +112,9 @@ function authMiddleware(botToken) {
       }
     }
 
+    if (process.env.AUTH_DEBUG) {
+      console.error('[auth] 401 — initData header:', JSON.stringify(req.header('x-tg-init-data')));
+    }
     return res.status(401).json({ error: 'unauthorized' });
   };
 }
