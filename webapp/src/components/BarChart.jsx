@@ -2,7 +2,7 @@ import React from 'react';
 import { fmtMoney, fmtMoneyShort } from '../format.js';
 
 export default function BarChart({ days }) {
-  if (!days.length) return <div className="empty">Нет данных</div>';
+  if (!days.length) return <div className="empty">Нет данных</div>;
 
   // Each bucket has:
   //   profit          — actual (completed orders, green)
