@@ -8,6 +8,16 @@
     />
     <title>Учёт заказов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      window.onerror = function(msg, src, line, col, err) {
+        var d = document.getElementById('root');
+        if (d) d.innerHTML = '<div style="padding:16px;color:red;font-family:monospace;word-break:break-all">JS Error: ' + msg + '<br>' + src + ':' + line + '<br>' + (err && err.stack ? err.stack : '') + '</div>';
+      };
+      window.onunhandledrejection = function(e) {
+        var d = document.getElementById('root');
+        if (d) d.innerHTML = '<div style="padding:16px;color:red;font-family:monospace;word-break:break-all">Unhandled: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '</div>';
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>
