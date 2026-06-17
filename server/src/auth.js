@@ -15,19 +15,13 @@ function validateInitData(initData, botToken) {
     return { valid: false, user: null };
   }
 
-  // Telegram signs the RAW URL-encoded form of initData. We must not
-  // decode values before building the data-check-string, otherwise
-  // reserved characters (e.g. +, /, =, %, Cyrillic, JSON braces) get
-  // rewritten and the HMAC won't match.
-  //
-  // Strategy: take everything before "hash=", parse just the hash,
-  // then split the remainder on "&" and sort by key (raw, no decoding).
-  const hashMatch = initData.match(/^([^#]*?)(?:#.*)?$/);
-  const raw = hashMatch ? hashMatch[1] : initData;
+  // Telegram signs the RAW URL-encoded form. We must keep values encoded
+  // when building the data-check-string, otherwise HMAC never matches.
+  const url = initData.indexOf('#') >= 0 ? initData.slice(0, initData.indexOf('#')) : initData;
 
   let hash = null;
   const pairs = [];
-  for (const segment of raw.split('&')) {
+  for (const segment of url.split('&')) {
     if (!segment) continue;
     const eq = segment.indexOf('=');
     if (eq < 0) continue;
@@ -55,18 +49,10 @@ function validateInitData(initData, botToken) {
     .digest('hex');
 
   if (computed !== hash) {
-    console.error('[auth] HMAC MISMATCH:');
-    console.error('  initData:        ', JSON.stringify(initData));
-    console.error('  dataCheckString: ', JSON.stringify(dataCheckString));
-    console.error('  expected hash:   ', hash);
-    console.error('  computed hash:   ', computed);
-    console.error('  pairs:           ', JSON.stringify(pairs));
-    return { valid: false, user: null };
-  }
     return { valid: false, user: null };
   }
 
-  // auth_date freshness check (skip if TESTING=1)
+  // auth_date freshness (skip if TESTING=1)
   let authDate = 0;
   for (const [k, v] of pairs) {
     if (k === 'auth_date') { authDate = Number(v); break; }
@@ -113,9 +99,6 @@ function authMiddleware(botToken) {
       }
     }
 
-    if (process.env.AUTH_DEBUG) {
-      console.error('[auth] 401 — initData header:', JSON.stringify(req.header('x-tg-init-data')));
-    }
     return res.status(401).json({ error: 'unauthorized' });
   };
 }
