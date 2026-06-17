@@ -83,13 +83,16 @@ export default function BarChart({ days }) {
                   title={title}
                 >
                   <div className="bar-stack" style={{ height: MAX_BAR_HEIGHT }}>
-                    <div
-                      className="bar-segment bar-segment--potential"
-                      style={{ height: `${hPot}px` }}
-                    />
+                    {/* Green (actual) at the bottom, yellow (potential) on top.
+                        flex-direction: column stacks them so actual renders
+                        first and potential stacks above it. */}
                     <div
                       className="bar-segment bar-segment--actual"
                       style={{ height: `${hActual}px` }}
+                    />
+                    <div
+                      className="bar-segment bar-segment--potential"
+                      style={{ height: `${hPot}px` }}
                     />
                     {total > 0 && (
                       <div className="bar-value">{fmtMoneyShort(total)}</div>

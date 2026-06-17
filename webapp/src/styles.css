@@ -267,7 +267,7 @@ body { min-height: 100vh; }
   position: relative;
   width: 100%;
   display: flex;
-  flex-direction: column-reverse; /* green (actual) above yellow (potential) */
+  flex-direction: column; /* actual (green) bottom, potential (yellow) on top */
   min-height: 4px;
   /* Anchor the segments to the bottom of the stack so the value label
      floats above the tallest point. */
@@ -284,8 +284,9 @@ body { min-height: 100vh; }
   background: linear-gradient(180deg, #ffcc00 0%, rgba(255, 204, 0, 0.6) 100%);
   border-radius: 4px 4px 0 0;
 }
-/* When the actual is the topmost stacked segment, round its top corners */
-.bar-stack > .bar-segment--actual:not(:last-child) { border-radius: 0; }
+/* When the actual is at the bottom of the stack, the potential (yellow)
+   segment on top is always the last child — keep its top corners rounded. */
+.bar-stack > .bar-segment--potential { border-radius: 4px 4px 0 0; }
 
 /* Legend below the bar chart */
 .bar-legend {
