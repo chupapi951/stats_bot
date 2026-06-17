@@ -55,13 +55,14 @@ function validateInitData(initData, botToken) {
     .digest('hex');
 
   if (computed !== hash) {
-    if (process.env.AUTH_DEBUG) {
-      console.error('[auth] HMAC mismatch');
-      console.error('[auth] dataCheckString:', JSON.stringify(dataCheckString));
-      console.error('[auth] expected hash:  ', hash);
-      console.error('[auth] computed hash: ', computed);
-      console.error('[auth] raw initData:   ', initData);
-    }
+    console.error('[auth] HMAC MISMATCH:');
+    console.error('  initData:        ', JSON.stringify(initData));
+    console.error('  dataCheckString: ', JSON.stringify(dataCheckString));
+    console.error('  expected hash:   ', hash);
+    console.error('  computed hash:   ', computed);
+    console.error('  pairs:           ', JSON.stringify(pairs));
+    return { valid: false, user: null };
+  }
     return { valid: false, user: null };
   }
 
