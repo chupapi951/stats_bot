@@ -37,11 +37,23 @@ async function realRequest(method, url, body, { initData, user }) {
   };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(REAL_API + url, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined
-  });
+  let res;
+  try {
+    res = await fetch(BASE + url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    });
+  } catch (e) {
+    // iOS WebKit throws TypeError "Load failed" for any network/CORS/connection
+    // problem before a response arrives. Surface a friendlier message.
+    console.error('[api] fetch failed:', url, e);
+    const detail = (e && e.message) || String(e);
+    if (window.Telegram && window.Telegram.WebApp) {
+      throw new Error(`сеть: ${detail}`);
+    }
+    throw new Error(`сеть: ${detail}`);
+  }
 
   if (res.status === 401) throw new Error('unauthorized');
   if (!res.ok) {
@@ -49,6 +61,9 @@ async function realRequest(method, url, body, { initData, user }) {
     try { const j = await res.json(); if (j?.error) err = j.error; } catch (_) {}
     throw new Error(err);
   }
+  if (res.status === 204) return null;
+  return res.json();
+}
   if (res.status === 204) return null;
   return res.json();
 }
