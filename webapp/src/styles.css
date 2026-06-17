@@ -215,15 +215,33 @@ body { min-height: 100vh; }
 .detail .actions .btn { width: 100%; }
 .detail .actions.danger { margin-top: 14px; grid-template-columns: 1fr; }
 
-.bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 8px 4px 0; }
-.bar-chart .bar { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bar-chart { display: flex; align-items: flex-end; gap: 8px; padding: 8px 4px 0; }
+.bar-chart .bar { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bar-chart-wrap {
+  position: relative;
+}
 .bar-chart-scroll {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  /* Keep a thin scrollbar so users see the chart is scrollable on touch
+     and on desktop hover. We disable iOS overlay scrollbar with a
+     negative margin trick. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.25) transparent;
+  /* Fade on the right edge to hint that more content is available. */
+  -webkit-mask-image: linear-gradient(to right, #000 92%, transparent 100%);
+          mask-image: linear-gradient(to right, #000 92%, transparent 100%);
 }
-.bar-chart-scroll::-webkit-scrollbar { display: none; }
+.bar-chart-scroll::-webkit-scrollbar { height: 4px; }
+.bar-chart-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.25); border-radius: 999px; }
+.bar-chart-hint {
+  font-size: 11px;
+  color: var(--hint);
+  text-align: right;
+  margin-top: 4px;
+  padding-right: 4px;
+}
 .bar-chart .bar-fill {
   width: 100%;
   background: linear-gradient(180deg, var(--accent) 0%, rgba(36, 129, 204, 0.4) 100%);
@@ -251,6 +269,9 @@ body { min-height: 100vh; }
   display: flex;
   flex-direction: column-reverse; /* green (actual) above yellow (potential) */
   min-height: 4px;
+  /* Anchor the segments to the bottom of the stack so the value label
+     floats above the tallest point. */
+  justify-content: flex-end;
 }
 .bar-segment {
   width: 100%;
