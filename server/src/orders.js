@@ -147,13 +147,16 @@ async function computeStats(userId, from, to) {
   const counts = { created: 0, shipped: 0, completed: 0, returned: 0 };
   for (const r of byStatus) counts[r._id] = r.count;
 
+  // Revenue / cost / profit are counted ONLY for completed orders.
+  // Returned orders must NOT inflate the revenue or the cost — they are
+  // a separate business outcome (handled in counts.returned + returnRate).
   const moneyAgg = await db
     .collection('orders')
     .aggregate([
-      { $match: { ...baseMatch, status: { $in: ['completed', 'returned'] } } },
+      { $match: { ...baseMatch, status: 'completed' } },
       {
         $group: {
-          _id: '$status',
+          _id: null,
           revenue: { $sum: '$sellingPrice' },
           cost: { $sum: '$costPrice' },
           profit: { $sum: '$profit' }
@@ -162,14 +165,10 @@ async function computeStats(userId, from, to) {
     ])
     .toArray();
 
-  let revenue = 0;
-  let cost = 0;
-  let profit = 0;
-  for (const r of moneyAgg) {
-    revenue += r.revenue || 0;
-    cost += r.cost || 0;
-    profit += r.profit || 0;
-  }
+  const moneyRow = moneyAgg[0] || { revenue: 0, cost: 0, profit: 0 };
+  const revenue = moneyRow.revenue || 0;
+  const cost = moneyRow.cost || 0;
+  const profit = moneyRow.profit || 0;
 
   // top products by profit (completed only)
   const topProducts = await db

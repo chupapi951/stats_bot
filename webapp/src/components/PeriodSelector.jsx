@@ -101,9 +101,13 @@ export default function PeriodSelector({ value, onChange }) {
 
   const applyCustom = () => {
     if (!customFrom || !customTo || customFrom > customTo) return;
+    // Parse as UTC midnight so the wall-clock date the user picked in
+    // the <input type="date"> does not shift by the local TZ offset
+    // (e.g. picking 2026-06-01 in MSK would otherwise become 2026-05-31
+    // once the server reads it back in UTC).
     onChange({
-      from: new Date(`${customFrom}T00:00:00`).toISOString(),
-      to:   new Date(`${customTo}T23:59:59`).toISOString()
+      from: `${customFrom}T00:00:00.000Z`,
+      to:   `${customTo}T23:59:59.999Z`
     });
   };
 

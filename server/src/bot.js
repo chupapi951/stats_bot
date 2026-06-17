@@ -29,6 +29,15 @@ function appUrlWithStart(startParam) {
   return `${webappUrl}${sep}tgStartParam=${encodeURIComponent(startParam)}`;
 }
 
+/**
+ * Build an inline button that opens the Mini App inside Telegram
+ * (rather than launching the external browser). Telegram supports
+ * `web_app` button type only for inline keyboards.
+ */
+function webAppButton(text, startParam) {
+  return { text, web_app: { url: appUrlWithStart(startParam) } };
+}
+
 async function start(token, url) {
   if (!token || token.includes('REPLACE') || token.length < 20) {
     console.warn('[bot] BOT_TOKEN is not configured — bot disabled. Set BOT_TOKEN in .env to enable.');
@@ -53,12 +62,11 @@ async function start(token, url) {
       return bot.sendMessage(chatId, 'Доступ запрещён.');
     }
     const startParam = match[1] || 'home';
-    const url = appUrlWithStart(startParam);
-    if (!url) {
+    if (!webappUrl) {
       return bot.sendMessage(chatId, 'Mini App URL не настроен (WEBAPP_URL).');
     }
     return bot.sendMessage(chatId, 'Открываю мини-приложение…', {
-      reply_markup: { inline_keyboard: [[{ text: '📊 Открыть Mini App', url }]] }
+      reply_markup: { inline_keyboard: [[webAppButton('📊 Открыть Mini App', startParam)]] }
     });
   });
 
@@ -67,12 +75,11 @@ async function start(token, url) {
     if (!isAllowed(msg.from.id)) {
       return bot.sendMessage(chatId, 'Доступ запрещён.');
     }
-    const url = appUrlWithStart(section);
-    if (!url) {
+    if (!webappUrl) {
       return bot.sendMessage(chatId, 'Mini App URL не настроен (WEBAPP_URL).');
     }
     return bot.sendMessage(chatId, `Открываю раздел «${sectionLabel(section)}»…`, {
-      reply_markup: { inline_keyboard: [[{ text: '📱 Открыть', url }]] }
+      reply_markup: { inline_keyboard: [[webAppButton('📱 Открыть', section)]] }
     });
   };
 
@@ -124,7 +131,7 @@ async function start(token, url) {
         const url = appUrlWithStart('report');
         await bot.sendMessage(u.userId, text, {
           parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[{ text: '📈 Открыть отчёт', url }]] }
+          reply_markup: { inline_keyboard: [[webAppButton('📈 Открыть отчёт', 'report')]] }
         });
       } catch (e) {
         console.warn('[bot] weekly send failed:', e.message);

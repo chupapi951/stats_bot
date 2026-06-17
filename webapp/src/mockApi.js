@@ -137,10 +137,12 @@ function dashboard() {
   const inWeek = state.orders.filter((o) => within(o.createdAt, wkFrom, wkTo));
   const counts = { created: 0, shipped: 0, completed: 0, returned: 0 };
   for (const o of inWeek) counts[o.status] += 1;
-  const decided = state.orders.filter((o) => o.status === 'completed' || o.status === 'returned');
-  const revenue = decided.reduce((s, o) => s + (o.sellingPrice || 0), 0);
-  const cost    = decided.reduce((s, o) => s + (o.costPrice || 0), 0);
-  const profit  = decided.reduce((s, o) => s + (o.profit || 0), 0);
+  // Revenue / cost / profit counted ONLY for completed orders in the
+  // current week. Returned orders are tracked via counts.returned.
+  const completed = inWeek.filter((o) => o.status === 'completed');
+  const revenue = round2(completed.reduce((s, o) => s + (o.sellingPrice || 0), 0));
+  const cost    = round2(completed.reduce((s, o) => s + (o.costPrice || 0), 0));
+  const profit  = round2(completed.reduce((s, o) => s + (o.profit || 0), 0));
 
   const profitByDay = [];
   for (let i = 0; i < 7; i += 1) {
@@ -290,12 +292,14 @@ function statsFor(from, to) {
     return t >= from.getTime() && t < to.getTime();
   });
   const counts = { created: 0, shipped: 0, completed: 0, returned: 0 };
-  for (const o of inRange) counts[o.status] += 1;
-  const all = inRange.length;
-  const decided = inRange.filter((o) => o.status === 'completed' || o.status === 'returned');
-  const revenue = round2(decided.reduce((s, o) => s + o.sellingPrice, 0));
-  const cost    = round2(decided.reduce((s, o) => s + o.costPrice, 0));
-  const profit  = round2(decided.reduce((s, o) => s + (o.profit || 0), 0));
+  for (const o of inWeek) counts[o.status] += 1;
+  const all = inWeek.length;
+  // Revenue / cost / profit are counted ONLY for completed orders.
+  // Returned orders are tracked separately in counts.returned + returnRate.
+  const completed = inWeek.filter((o) => o.status === 'completed');
+  const revenue = round2(completed.reduce((s, o) => s + o.sellingPrice, 0));
+  const cost    = round2(completed.reduce((s, o) => s + o.costPrice, 0));
+  const profit  = round2(completed.reduce((s, o) => s + (o.profit || 0), 0));
 
   const productMap = new Map();
   for (const o of inRange) {
