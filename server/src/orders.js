@@ -249,6 +249,8 @@ async function profitByBuckets(userId, from, to) {
     out.push({
       from: b.from.toISOString(),
       to: b.to.toISOString(),
+      date: b.from.toISOString(),
+      dateText: b.from.toLocaleDateString('ru-RU'),
       profit: round2(agg[0]?.profit || 0),
       orders: agg[0]?.count || 0
     });

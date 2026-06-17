@@ -13,9 +13,24 @@ export default function Report() {
     if (!range) return;
     setErr(null);
     setData(null);
+    let alive = true;
     api.periodReport(range)
-      .then(setData)
-      .catch((e) => setErr(e.message));
+      .then((d) => alive && setData(d))
+      .catch((e) => alive && setErr(e.message || 'ошибка загрузки'));
+    return () => { alive = false; };
+  }, [range]);
+
+  // Default to current week on first mount
+  useEffect(() => {
+    if (range) return;
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const day = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - day);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    setRange({ from: start.toISOString(), to: end.toISOString() });
   }, [range]);
 
   if (err) return <div className="empty">Ошибка: {err}</div>;
