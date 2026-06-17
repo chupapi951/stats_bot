@@ -15,18 +15,34 @@ function validateInitData(initData, botToken) {
     return { valid: false, user: null };
   }
 
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
+  // Telegram signs the RAW URL-encoded form of initData. We must not
+  // decode values before building the data-check-string, otherwise
+  // reserved characters (e.g. +, /, =, %, Cyrillic, JSON braces) get
+  // rewritten and the HMAC won't match.
+  //
+  // Strategy: take everything before "hash=", parse just the hash,
+  // then split the remainder on "&" and sort by key (raw, no decoding).
+  const hashMatch = initData.match(/^([^#]*?)(?:#.*)?$/);
+  const raw = hashMatch ? hashMatch[1] : initData;
+
+  let hash = null;
+  const pairs = [];
+  for (const segment of raw.split('&')) {
+    if (!segment) continue;
+    const eq = segment.indexOf('=');
+    if (eq < 0) continue;
+    const key = segment.slice(0, eq);
+    const value = segment.slice(eq + 1);
+    if (key === 'hash') {
+      hash = value;
+    } else {
+      pairs.push([key, value]);
+    }
+  }
   if (!hash) return { valid: false, user: null };
 
-  params.delete('hash');
-
-  // build data-check-string: key=value pairs sorted by key, joined with \n
-  const pairs = [];
-  for (const [key, value] of [...params.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-    pairs.push(`${key}=${value}`);
-  }
-  const dataCheckString = pairs.join('\n');
+  pairs.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const dataCheckString = pairs.map(([k, v]) => `${k}=${v}`).join('\n');
 
   const secretKey = crypto
     .createHmac('sha256', 'WebAppData')
@@ -43,7 +59,10 @@ function validateInitData(initData, botToken) {
   }
 
   // auth_date freshness check (skip if TESTING=1)
-  const authDate = Number(params.get('auth_date'));
+  let authDate = 0;
+  for (const [k, v] of pairs) {
+    if (k === 'auth_date') { authDate = Number(v); break; }
+  }
   if (!process.env.TESTING) {
     if (!authDate || Date.now() / 1000 - authDate > 60 * 60 * 24) {
       return { valid: false, user: null };
@@ -51,12 +70,10 @@ function validateInitData(initData, botToken) {
   }
 
   let user = null;
-  const userStr = params.get('user');
-  if (userStr) {
-    try {
-      user = JSON.parse(userStr);
-    } catch (_) {
-      user = null;
+  for (const [k, v] of pairs) {
+    if (k === 'user') {
+      try { user = JSON.parse(decodeURIComponent(v)); } catch (_) { user = null; }
+      break;
     }
   }
 
