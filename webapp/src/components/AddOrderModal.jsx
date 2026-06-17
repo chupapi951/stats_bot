@@ -90,13 +90,21 @@ export default function AddOrderModal({ api, onClose, onCreated }) {
         </div>
 
         <div className="field field--date-toggle">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={useCustomDate}
-              onChange={(e) => setUseCustomDate(e.target.checked)}
-            />
-            <span>Указать дату создания</span>
+          <label className="toggle-row">
+            <span className="toggle-row__label">
+              <span className="toggle-row__icon" aria-hidden>📅</span>
+              Указать дату создания
+            </span>
+            <span className="toggle">
+              <input
+                type="checkbox"
+                checked={useCustomDate}
+                onChange={(e) => setUseCustomDate(e.target.checked)}
+              />
+              <span className="toggle__track">
+                <span className="toggle__thumb" />
+              </span>
+            </span>
           </label>
           {useCustomDate && (
             <div className="date-picker">

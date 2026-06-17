@@ -200,31 +200,81 @@ body { min-height: 100vh; }
 .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .modal-actions .btn { flex: 1; }
 
-.checkbox-label {
-  display: inline-flex; align-items: center; gap: 10px;
-  text-transform: none; letter-spacing: 0; color: var(--text); font-size: 14px;
-  cursor: pointer;
-  user-select: none;
+/* Toggle switch (used for the create-date checkbox in Add Order modal).
+   We render a custom track + thumb so the control is large and visible
+   on iOS Safari where the native checkbox can look tiny. */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  text-transform: none; letter-spacing: 0; color: var(--text); font-size: 15px;
+  cursor: pointer; user-select: none;
+  padding: 0;
+  margin: 0;
 }
-.checkbox-label input {
-  width: 20px; height: 20px; margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
+.toggle-row__label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-weight: 500;
+}
+.toggle-row__icon {
+  font-size: 18px;
+  filter: saturate(1.1);
+}
+.toggle {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+/* Visually hide the native checkbox but keep it accessible. */
+.toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.toggle__track {
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  position: relative;
+  transition: background 0.18s ease;
+  flex: 0 0 auto;
+}
+.toggle__thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.18s ease;
+}
+.toggle input[type="checkbox"]:checked + .toggle__track {
+  background: var(--accent);
+}
+.toggle input[type="checkbox"]:checked + .toggle__track .toggle__thumb {
+  transform: translateX(20px);
+}
+.toggle input[type="checkbox"]:focus-visible + .toggle__track {
+  box-shadow: 0 0 0 3px rgba(36, 129, 204, 0.3);
 }
 
 /* Date picker inside Add Order modal */
 .field--date-toggle {
   background: var(--secondary-bg);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-top: 4px;
+  border-radius: 12px;
+  padding: 14px 14px;
+  margin-top: 6px;
   transition: background 0.15s ease;
+  border: 1px solid var(--border);
 }
 .field--date-toggle:has(input[type="checkbox"]:checked) {
   background: rgba(36, 129, 204, 0.08);
+  border-color: rgba(36, 129, 204, 0.35);
 }
 .date-picker {
-  margin-top: 10px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -232,16 +282,17 @@ body { min-height: 100vh; }
 }
 .date-picker input[type="date"] {
   appearance: none;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   background: var(--bg);
   color: var(--text);
-  border-radius: 8px;
-  padding: 9px 12px;
+  border-radius: 10px;
+  padding: 11px 12px;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   outline: none;
   color-scheme: light dark;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-height: 44px;
 }
 .date-picker input[type="date"]:focus {
   border-color: var(--accent);
@@ -250,7 +301,7 @@ body { min-height: 100vh; }
 .date-picker__hint {
   font-size: 12px;
   color: var(--hint);
-  padding-left: 2px;
+  padding: 2px 4px 0;
   font-variant-numeric: tabular-nums;
 }
 @keyframes slideDown {
