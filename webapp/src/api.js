@@ -1,27 +1,8 @@
-import { useTelegram } from './telegram.jsx';
+import { useTelegram, isMockMode as _isMockMode } from './telegram.jsx';
 import { mockApi } from './mockApi.js';
 
-const REAL_API = 'http://127.0.0.1:3000';
-
 function isMockMode() {
-  // Delegate to the shared detectMock in telegram.jsx (imported as isMockMode)
-  // This is kept for backward compatibility — real logic is in telegram.jsx
-  if (typeof window === 'undefined') return false;
-  if (window.__STATS_BOT_MOCK__ === true) return true;
-  if (window.__STATS_BOT_MOCK__ === false) return false;
-  try {
-    const u = new URL(window.location.href);
-    if (u.searchParams.get('mock') === '1') { window.__STATS_BOT_MOCK__ = true; return true; }
-    if (u.searchParams.get('mock') === '0') { window.__STATS_BOT_MOCK__ = false; return false; }
-  } catch (_) {}
-  // Auto-mock only on localhost, never in production
-  const hostname = window.location.hostname;
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
-  if (isLocal && (!window.Telegram || !window.Telegram.WebApp)) {
-    window.__STATS_BOT_MOCK__ = true;
-    return true;
-  }
-  return false;
+  return _isMockMode;
 }
 
 function getTestingHeaders(user) {
@@ -29,6 +10,8 @@ function getTestingHeaders(user) {
   if (window.__STATS_BOT_TESTING__ && user) return { 'x-tg-user-id': String(user.id) };
   return {};
 }
+
+const REAL_API = 'https://statsbot.duckdns.org';
 
 async function realRequest(method, url, body, { initData, user }) {
   const headers = {
@@ -39,19 +22,14 @@ async function realRequest(method, url, body, { initData, user }) {
 
   let res;
   try {
-    res = await fetch(BASE + url, {
+    res = await fetch(REAL_API + url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined
     });
   } catch (e) {
-    // iOS WebKit throws TypeError "Load failed" for any network/CORS/connection
-    // problem before a response arrives. Surface a friendlier message.
     console.error('[api] fetch failed:', url, e);
     const detail = (e && e.message) || String(e);
-    if (window.Telegram && window.Telegram.WebApp) {
-      throw new Error(`сеть: ${detail}`);
-    }
     throw new Error(`сеть: ${detail}`);
   }
 
@@ -64,9 +42,6 @@ async function realRequest(method, url, body, { initData, user }) {
   if (res.status === 204) return null;
   return res.json();
 }
-  if (res.status === 204) return null;
-  return res.json();
-}
 
 function mockRequest(method, url, body) {
   const m = url.match(/^\/api\/orders\/(\d+)(\/status)?$/);
@@ -76,7 +51,7 @@ function mockRequest(method, url, body) {
     const u = new URL('http://x' + url);
     return mockApi.periodReport({ from: u.searchParams.get('from'), to: u.searchParams.get('to') });
   }
-  if (method === 'GET' && url === '/api/advice')       return mockApi.advice();
+  if (method === 'GET' && url === '/api/advice') return mockApi.advice();
   if (method === 'GET' && url === '/api/orders') {
     const u = new URL('http://x' + url + (window.location.search || ''));
     return mockApi.listOrders({ status: u.searchParams.get('status'), search: u.searchParams.get('search') });
