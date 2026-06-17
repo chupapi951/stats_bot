@@ -79,14 +79,14 @@ export default function BarChart({ days }) {
                     <div className="bar-value">{fmtMoneyShort(total)}</div>
                   )}
                   <div className="bar-stack" style={{ height: MAX_BAR_HEIGHT }}>
-                    {/* Actual (green) at the bottom, potential (yellow) on top. */}
-                    <div
-                      className="bar-segment bar-segment--actual"
-                      style={{ height: `${hActual}px` }}
-                    />
+                    {/* Potential (yellow) on top, actual (green) at the bottom. */}
                     <div
                       className="bar-segment bar-segment--potential"
                       style={{ height: `${hPot}px` }}
+                    />
+                    <div
+                      className="bar-segment bar-segment--actual"
+                      style={{ height: `${hActual}px` }}
                     />
                   </div>
                   <div className="bar-label">{label}</div>

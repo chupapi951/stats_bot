@@ -274,11 +274,18 @@ body { min-height: 100vh; }
 }
 .bar-segment--actual {
   background: linear-gradient(180deg, #34c759 0%, rgba(52, 199, 89, 0.6) 100%);
-  border-radius: 6px 6px 0 0;
+  /* Actual is always the bottom segment — round its bottom corners. */
+  border-radius: 0 0 6px 6px;
 }
 .bar-segment--potential {
   background: linear-gradient(180deg, #ffcc00 0%, rgba(255, 204, 0, 0.6) 100%);
-  border-radius: 4px 4px 0 0;
+  /* Potential is always the top segment — round its top corners. */
+  border-radius: 6px 6px 0 0;
+}
+/* If both segments are present, drop the inner corners. */
+.bar-stack > .bar-segment--potential:has(+ .bar-segment--actual),
+.bar-stack > .bar-segment--actual:has(+ .bar-segment--potential) {
+  border-radius: 0;
 }
 /* When the actual is at the bottom of the stack, the potential (yellow)
    segment on top is always the last child — keep its top corners rounded. */
