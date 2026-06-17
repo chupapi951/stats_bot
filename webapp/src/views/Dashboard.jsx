@@ -22,12 +22,14 @@ export default function Dashboard() {
   }, []);
 
   if (err) return (
-    <div className="empty" style={{ padding: 16, textAlign: 'left', color: 'var(--bad)', fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all' }}>
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Ошибка: {err}</div>
-      <div style={{ opacity: 0.7, fontSize: 10 }}>url: {window.location.href}</div>
-      <div style={{ opacity: 0.7, fontSize: 10 }}>tg.initData: {window.Telegram?.WebApp?.initData?.length || 0} chars</div>
-      <div style={{ opacity: 0.7, fontSize: 10 }}>platform: {navigator.platform}</div>
-      <div style={{ opacity: 0.7, fontSize: 10 }}>onLine: {navigator.onLine}</div>
+    <div className="empty" style={{ padding: 16, textAlign: 'left', color: 'var(--bad)', fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.4 }}>
+      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Ошибка: {err}</div>
+      <div style={{ opacity: 0.7, fontSize: 11 }}>url: {window.location.href}</div>
+      <div style={{ opacity: 0.7, fontSize: 11 }}>tg.initData: {window.Telegram?.WebApp?.initData?.length || 0} chars</div>
+      <div style={{ opacity: 0.7, fontSize: 11 }}>platform: {navigator.platform}</div>
+      <div style={{ opacity: 0.7, fontSize: 11 }}>ua: {(navigator.userAgent || '').slice(0, 80)}</div>
+      <div style={{ opacity: 0.7, fontSize: 11 }}>onLine: {String(navigator.onLine)}</div>
+      <div style={{ opacity: 0.7, fontSize: 11 }}>hasTelegram: {String(Boolean(window.Telegram && window.Telegram.WebApp))}</div>
     </div>
   );
   if (!data) return <div className="loader">Загрузка…</div>;
