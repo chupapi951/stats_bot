@@ -35,6 +35,16 @@ function serializeOrder(o) {
 function buildApi(botToken) {
   const api = express.Router();
   api.use(express.json({ limit: '256kb' }));
+
+  // Temporary request logger — logs every /api call with auth header presence
+  if (process.env.AUTH_DEBUG) {
+    api.use((req, _res, next) => {
+      const initData = req.header('x-tg-init-data') || '';
+      console.log(`[req] ${req.method} ${req.path} | initData len=${initData.length} | first60=${initData.slice(0, 60)}`);
+      next();
+    });
+  }
+
   api.use(authMiddleware(botToken));
 
   // ---- Dashboard ----
