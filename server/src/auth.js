@@ -68,6 +68,9 @@ function validateInitData(initData, botToken) {
  */
 function authMiddleware(botToken) {
   return (req, res, next) => {
+    // CORS preflight — let the cors middleware handle it; do not require auth.
+    if (req.method === 'OPTIONS') return next();
+
     const initData = req.header('x-tg-init-data') || '';
     const result = validateInitData(initData, botToken);
 

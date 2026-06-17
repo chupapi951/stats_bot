@@ -21,17 +21,7 @@ export default function Dashboard() {
     return () => { alive = false; window.removeEventListener('order:changed', onChange); };
   }, []);
 
-  if (err) return (
-    <div className="empty" style={{ padding: 16, textAlign: 'left', color: 'var(--bad)', fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.4 }}>
-      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Ошибка: {err}</div>
-      <div style={{ opacity: 0.7, fontSize: 11 }}>url: {window.location.href}</div>
-      <div style={{ opacity: 0.7, fontSize: 11 }}>tg.initData: {window.Telegram?.WebApp?.initData?.length || 0} chars</div>
-      <div style={{ opacity: 0.7, fontSize: 11 }}>platform: {navigator.platform}</div>
-      <div style={{ opacity: 0.7, fontSize: 11 }}>ua: {(navigator.userAgent || '').slice(0, 80)}</div>
-      <div style={{ opacity: 0.7, fontSize: 11 }}>onLine: {String(navigator.onLine)}</div>
-      <div style={{ opacity: 0.7, fontSize: 11 }}>hasTelegram: {String(Boolean(window.Telegram && window.Telegram.WebApp))}</div>
-    </div>
-  );
+  if (err) return <div className="empty">Ошибка: {err}</div>;
   if (!data) return <div className="loader">Загрузка…</div>;
 
   const w = data.week;
