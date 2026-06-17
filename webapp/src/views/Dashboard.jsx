@@ -21,7 +21,17 @@ export default function Dashboard() {
     return () => { alive = false; window.removeEventListener('order:changed', onChange); };
   }, []);
 
-  if (err) return <div className="empty">Ошибка: {err}</div>;
+  if (err) return (
+    <div className="empty" style={{ padding: 20, textAlign: 'left', color: 'var(--bad)', fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>Ошибка: {err}</div>
+      <div style={{ opacity: 0.6, fontSize: 11 }}>url: {window.location.href}</div>
+      <div style={{ opacity: 0.6, fontSize: 11 }}>isMockMode: {String(window.__STATS_BOT_MOCK__)}</div>
+      <div style={{ opacity: 0.6, fontSize: 11 }}>hasTelegram: {String(Boolean(window.Telegram && window.Telegram.WebApp))}</div>
+      <div style={{ opacity: 0.6, fontSize: 11, wordBreak: 'break-all' }}>
+        initData len: {window.Telegram?.WebApp?.initData?.length || 0}
+      </div>
+    </div>
+  );
   if (!data) return <div className="loader">Загрузка…</div>;
 
   const w = data.week;
