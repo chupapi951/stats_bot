@@ -149,7 +149,9 @@ async function computeStats(userId, from, to) {
 
   // Revenue / cost / profit:
   //   - actual:    counted ONLY for completed orders
-  //   - potential: counted for created + shipped orders (still in pipeline)
+  //   - potential: counted for created + shipped orders (still in pipeline).
+  //     For these the order's `profit` field is null until completion, so we
+  //     compute it inline as sellingPrice - costPrice.
   // Returned orders are tracked separately via counts.returned + returnRate.
   const moneyAgg = await db
     .collection('orders')
@@ -165,7 +167,23 @@ async function computeStats(userId, from, to) {
           _id: '$status',
           revenue: { $sum: '$sellingPrice' },
           cost: { $sum: '$costPrice' },
-          profit: { $sum: '$profit' }
+          // Use $ifNull so null profits (created/shipped) are computed inline
+          // as sellingPrice - costPrice. The result is the expected profit
+          // if the order is eventually completed.
+          profit: {
+            $sum: {
+              $add: [
+                { $ifNull: ['$profit', 0] },
+                {
+                  $cond: [
+                    { $in: ['$status', ['created', 'shipped']] },
+                    { $subtract: ['$sellingPrice', '$costPrice'] },
+                    0
+                  ]
+                }
+              ]
+            }
+          }
         }
       }
     ])
@@ -255,6 +273,8 @@ async function profitByBuckets(userId, from, to) {
   const out = [];
   for (const b of buckets) {
     // Split by status so the bar chart can render actual vs potential stacks.
+    // For created/shipped, profit is null — compute it inline as
+    // sellingPrice - costPrice.
     const agg = await db
       .collection('orders')
       .aggregate([
@@ -268,7 +288,20 @@ async function profitByBuckets(userId, from, to) {
         {
           $group: {
             _id: '$status',
-            profit: { $sum: '$profit' },
+            profit: {
+              $sum: {
+                $add: [
+                  { $ifNull: ['$profit', 0] },
+                  {
+                    $cond: [
+                      { $in: ['$status', ['created', 'shipped']] },
+                      { $subtract: ['$sellingPrice', '$costPrice'] },
+                      0
+                    ]
+                  }
+                ]
+              }
+            },
             count: { $sum: 1 }
           }
         }

@@ -145,7 +145,9 @@ function dashboard() {
   const cost    = round2(completed.reduce((s, o) => s + (o.costPrice || 0), 0));
   const profit  = round2(completed.reduce((s, o) => s + (o.profit || 0), 0));
   const potentialRevenue = round2(potential.reduce((s, o) => s + (o.sellingPrice || 0), 0));
-  const potentialProfit  = round2(potential.reduce((s, o) => s + (o.profit || 0), 0));
+  // Potential profit is sellingPrice - costPrice, since created/shipped
+  // orders haven't had their `profit` field set yet.
+  const potentialProfit  = round2(potential.reduce((s, o) => s + ((o.sellingPrice || 0) - (o.costPrice || 0)), 0));
 
   const profitByDay = [];
   for (let i = 0; i < 7; i += 1) {
@@ -156,7 +158,8 @@ function dashboard() {
     profitByDay.push({
       date: ds.toISOString(),
       profit: day.reduce((s, o) => s + (o.profit || 0), 0),
-      potentialProfit: pot.reduce((s, o) => s + (o.profit || 0), 0),
+      // Potential profit for in-pipeline orders is sellingPrice - costPrice.
+      potentialProfit: pot.reduce((s, o) => s + ((o.sellingPrice || 0) - (o.costPrice || 0)), 0),
       orders: day.length
     });
   }
@@ -309,7 +312,8 @@ function statsFor(from, to) {
   const cost    = round2(completed.reduce((s, o) => s + o.costPrice, 0));
   const profit  = round2(completed.reduce((s, o) => s + (o.profit || 0), 0));
   const potentialRevenue = round2(potential.reduce((s, o) => s + o.sellingPrice, 0));
-  const potentialProfit  = round2(potential.reduce((s, o) => s + (o.profit || 0), 0));
+  // Potential profit is sellingPrice - costPrice.
+  const potentialProfit  = round2(potential.reduce((s, o) => s + (o.sellingPrice - o.costPrice), 0));
 
   const productMap = new Map();
   for (const o of inRange) {
@@ -339,7 +343,7 @@ function statsFor(from, to) {
       from: cursor.toISOString(),
       to: next.toISOString(),
       profit: round2(slice.reduce((s, o) => s + (o.profit || 0), 0)),
-      potentialProfit: round2(pot.reduce((s, o) => s + (o.profit || 0), 0)),
+      potentialProfit: round2(pot.reduce((s, o) => s + (o.sellingPrice - o.costPrice), 0)),
       orders: slice.length
     });
     cursor = next;
