@@ -3,15 +3,12 @@ import { fmtMoney, fmtMoneyShort } from '../format.js';
 
 const MIN_BAR = 8;
 const MAX_BAR = 56;
-const MAX_BAR_HEIGHT = 190;     // tall enough so 30 narrow bars feel readable
-const LABEL_AREA = 38;          // px reserved for date label below the bar
+const MAX_BAR_HEIGHT = 190;
 
 export default function BarChart({ days }) {
   const scrollRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // Track the container width so the bars fill the available space
-  // (or scroll horizontally if the range is wide).
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return undefined;
@@ -27,14 +24,11 @@ export default function BarChart({ days }) {
 
   if (!days.length) return <div className="empty">Нет данных</div>;
 
-  // Max combined value across all buckets (potential + actual).
   const max = Math.max(
     1,
     ...days.map((d) => (Number(d.profit) || 0) + (Number(d.potentialProfit) || 0))
   );
 
-  // Pick the widest bar that still fits the container, otherwise cap so
-  // we trigger a horizontal scroll instead of bars overflowing.
   const GAP = 8;
   const available = Math.max(containerWidth - GAP, MIN_BAR);
   const naturalBar = Math.min(
@@ -42,8 +36,6 @@ export default function BarChart({ days }) {
     Math.max(MIN_BAR, Math.floor((available - days.length * GAP) / days.length))
   );
 
-  // If the natural width still produces a chart wider than the container,
-  // the chart scrolls; we don't shrink bars below MIN_BAR.
   const needsScroll = naturalBar * days.length + GAP * days.length > available;
   const barWidth = needsScroll ? MIN_BAR : naturalBar;
   const chartWidth = days.length * (barWidth + GAP);
@@ -53,10 +45,10 @@ export default function BarChart({ days }) {
       <div className="bar-chart-wrap">
         <div className="bar-chart-scroll" ref={scrollRef}>
           <div
-            className="bar-chart bar-chart--stacked"
+            className="bar-chart"
             style={{
               minWidth: needsScroll ? chartWidth : '100%',
-              height: MAX_BAR_HEIGHT + LABEL_AREA
+              height: MAX_BAR_HEIGHT + 50 // bar height + label
             }}
           >
             {days.map((d, i) => {
@@ -82,6 +74,10 @@ export default function BarChart({ days }) {
                   style={{ width: barWidth, minWidth: barWidth, flex: needsScroll ? '0 0 auto' : '1 1 0' }}
                   title={title}
                 >
+                  {/* Value label sits ABOVE the stack in normal flow. */}
+                  {total > 0 && (
+                    <div className="bar-value">{fmtMoneyShort(total)}</div>
+                  )}
                   <div className="bar-stack" style={{ height: MAX_BAR_HEIGHT }}>
                     {/* Actual (green) at the bottom, potential (yellow) on top. */}
                     <div
@@ -93,9 +89,6 @@ export default function BarChart({ days }) {
                       style={{ height: `${hPot}px` }}
                     />
                   </div>
-                  {total > 0 && (
-                    <div className="bar-value">{fmtMoneyShort(total)}</div>
-                  )}
                   <div className="bar-label">{label}</div>
                 </div>
               );

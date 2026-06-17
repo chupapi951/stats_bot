@@ -215,21 +215,15 @@ body { min-height: 100vh; }
 .detail .actions .btn { width: 100%; }
 .detail .actions.danger { margin-top: 14px; grid-template-columns: 1fr; }
 
-.bar-chart { display: flex; align-items: flex-end; gap: 8px; padding: 24px 4px 0; }
-.bar-chart .bar { display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
-.bar-chart-wrap {
-  position: relative;
-}
+.bar-chart { display: flex; align-items: flex-end; gap: 8px; padding: 4px 4px 0; }
+.bar-chart .bar { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bar-chart-wrap { position: relative; }
 .bar-chart-scroll {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  /* Keep a thin scrollbar so users see the chart is scrollable on touch
-     and on desktop hover. We disable iOS overlay scrollbar with a
-     negative margin trick. */
   scrollbar-width: thin;
   scrollbar-color: rgba(0,0,0,0.25) transparent;
-  /* Fade on the right edge to hint that more content is available. */
   -webkit-mask-image: linear-gradient(to right, #000 92%, transparent 100%);
           mask-image: linear-gradient(to right, #000 92%, transparent 100%);
 }
@@ -248,9 +242,8 @@ body { min-height: 100vh; }
   border-radius: 6px 6px 0 0; min-height: 4px; position: relative;
 }
 .bar-chart .bar-value {
-  position: absolute;
-  top: 2px;
-  left: 0; right: 0;
+  /* In normal flow above the stack — no absolute positioning so it
+     always appears above the column. */
   font-size: 10px; color: var(--text);
   white-space: nowrap;
   font-weight: 600;
@@ -260,10 +253,7 @@ body { min-height: 100vh; }
   max-width: 64px;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Center the label on top of the bar (the .bar is the positioning
-     context, see .bar { position: relative }). */
-  margin: 0 auto;
-  z-index: 1;
+  margin-bottom: 2px;
 }
 .bar-chart .bar-label { font-size: 11px; color: var(--hint); }
 
