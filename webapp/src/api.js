@@ -1,6 +1,9 @@
 import { useTelegram, isMockMode as _isMockMode } from './telegram.jsx';
 import { mockApi } from './mockApi.js';
 
+const INIT_DATA_CACHE_KEY = 'stats_bot_initdata_v1';
+const INIT_DATA_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
 function isMockMode() {
   return _isMockMode;
 }
@@ -11,11 +14,36 @@ function getTestingHeaders(user) {
   return {};
 }
 
+function saveCachedInitData(value) {
+  if (typeof window === 'undefined' || !value) return;
+  try {
+    window.sessionStorage.setItem(
+      INIT_DATA_CACHE_KEY,
+      JSON.stringify({ ts: Date.now(), value })
+    );
+  } catch (_) {}
+}
+
 const REAL_API = 'https://statsbot.duckdns.org';
 
 async function realRequest(method, url, body, { initData, user }) {
+  // Last-resort fallback: if React state is empty (e.g. right after a refresh
+  // before the TelegramProvider useEffect ran), try the sessionStorage cache.
+  let effectiveInitData = initData;
+  if (!effectiveInitData && typeof window !== 'undefined') {
+    try {
+      const raw = window.sessionStorage.getItem(INIT_DATA_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.value && Date.now() - (parsed.ts || 0) < INIT_DATA_CACHE_TTL_MS) {
+          effectiveInitData = parsed.value;
+        }
+      }
+    } catch (_) {}
+  }
+
   const headers = {
-    'x-tg-init-data': initData || '',
+    'x-tg-init-data': effectiveInitData || '',
     ...getTestingHeaders(user)
   };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -33,7 +61,19 @@ async function realRequest(method, url, body, { initData, user }) {
     throw new Error(`сеть: ${detail}`);
   }
 
-  if (res.status === 401) throw new Error('unauthorized');
+  // Refresh the cache from any non-401 success response. Some Telegram
+  // sessions rotate the hash on a fresh server tick, so we want the
+  // most recent valid token cached for the next refresh.
+  if (res.ok && res.status !== 401 && effectiveInitData) {
+    saveCachedInitData(effectiveInitData);
+  }
+
+  if (res.status === 401) {
+    // Server rejected the initData (expired or stale). Drop the cache so
+    // the next reload doesn't keep replaying the same bad token.
+    try { window.sessionStorage.removeItem(INIT_DATA_CACHE_KEY); } catch (_) {}
+    throw new Error('unauthorized');
+  }
   if (!res.ok) {
     let err = `HTTP ${res.status}`;
     try { const j = await res.json(); if (j?.error) err = j.error; } catch (_) {}

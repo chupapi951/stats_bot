@@ -19,6 +19,33 @@ function detectMock() {
   return false;
 }
 
+const INIT_DATA_CACHE_KEY = 'stats_bot_initdata_v1';
+const INIT_DATA_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — server caps auth_date at 24h
+
+function loadCachedInitData() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const raw = window.sessionStorage.getItem(INIT_DATA_CACHE_KEY);
+    if (!raw) return '';
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.ts || !parsed.value) return '';
+    if (Date.now() - parsed.ts > INIT_DATA_CACHE_TTL_MS) return '';
+    return parsed.value;
+  } catch (_) {
+    return '';
+  }
+}
+
+function saveCachedInitData(value) {
+  if (typeof window === 'undefined' || !value) return;
+  try {
+    window.sessionStorage.setItem(
+      INIT_DATA_CACHE_KEY,
+      JSON.stringify({ ts: Date.now(), value })
+    );
+  } catch (_) {}
+}
+
 export const isMockMode = detectMock();
 
 export const tg =
@@ -55,11 +82,13 @@ function applyThemeParams(tp) {
 export function TelegramProvider({ children }) {
   const [user, setUser] = useState(null);
   const [colorScheme, setColorScheme] = useState('light');
-  const [initData, setInitData] = useState('');
+  // Seed from cache so a page refresh still has valid initData while we
+  // re-initialise the SDK. The cache lives in sessionStorage and is wiped
+  // when the tab closes — it never outlives the Mini App session.
+  const [initData, setInitData] = useState(() => loadCachedInitData());
 
   useEffect(() => {
     if (isMockMode) {
-      // synthesize a fake Telegram user for local development
       const mockUser = { id: 100001, first_name: 'Demo', username: 'demo' };
       setUser(mockUser);
       setInitData('');
@@ -73,9 +102,22 @@ export function TelegramProvider({ children }) {
       if (tg.setHeaderColor && tg.themeParams?.bg_color) {
         tg.setHeaderColor(tg.themeParams.bg_color);
       }
-      setUser(tg.initDataUnsafe?.user || null);
+      const fresh = tg.initData || '';
+      if (fresh) {
+        // SDK provided a fresh signed initData — use it and cache for the next refresh.
+        setUser(tg.initDataUnsafe?.user || null);
+        setInitData(fresh);
+        saveCachedInitData(fresh);
+      } else {
+        // SDK has no initData (e.g. iOS pull-to-refresh destroyed the context).
+        // Fall back to the cached one from the previous open; do NOT change user,
+        // because the cached initData is bound to that user.
+        const cached = loadCachedInitData();
+        if (cached && !initData) {
+          setInitData(cached);
+        }
+      }
       setColorScheme(tg.colorScheme || 'light');
-      setInitData(tg.initData || '');
       tg.onEvent && tg.onEvent('themeChanged', () => {
         applyThemeParams(tg.themeParams);
         setColorScheme(tg.colorScheme || 'light');
@@ -83,6 +125,8 @@ export function TelegramProvider({ children }) {
     } catch (e) {
       console.warn('tg init failed', e);
     }
+    // We intentionally do NOT depend on `initData` here — this effect runs once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(
