@@ -3,9 +3,8 @@
 const crypto = require('crypto');
 
 /**
- * Validate Telegram Mini App initData.
- *
- * Spec: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+ * Validate Telegram Mini App initData per the official algorithm:
+ * https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
  *
  * Returns { valid, user } where user is the parsed Telegram user object
  * (or null if validation fails / no user present).
@@ -15,60 +14,46 @@ function validateInitData(initData, botToken) {
     return { valid: false, user: null };
   }
 
-  // Telegram signs the RAW URL-encoded form. We must keep values encoded
-  // when building the data-check-string, otherwise HMAC never matches.
-  const url = initData.indexOf('#') >= 0 ? initData.slice(0, initData.indexOf('#')) : initData;
-
-  let hash = null;
-  const pairs = [];
-  for (const segment of url.split('&')) {
-    if (!segment) continue;
-    const eq = segment.indexOf('=');
-    if (eq < 0) continue;
-    const key = segment.slice(0, eq);
-    const value = segment.slice(eq + 1);
-    if (key === 'hash') {
-      hash = value;
-    } else {
-      pairs.push([key, value]);
-    }
-  }
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
   if (!hash) return { valid: false, user: null };
 
-  pairs.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  const dataCheckString = pairs.map(([k, v]) => `${k}=${v}`).join('\n');
+  // Check auth_date freshness (skip in TESTING mode)
+  const authDate = Number(params.get('auth_date'));
+  if (!process.env.TESTING) {
+    if (!authDate || Date.now() / 1000 - authDate > 86400) {
+      return { valid: false, user: null };
+    }
+  }
+
+  params.delete('hash');
+
+  // Build data-check-string: key=value pairs sorted by key, joined with \n.
+  // Telegram normalizes values before signing, so we use the decoded form
+  // from URLSearchParams.entries() (matches the reference implementation).
+  const dataCheckString = [...params.entries()]
+    .map(([key, value]) => `${key}=${value}`)
+    .sort()
+    .join('\n');
 
   const secretKey = crypto
     .createHmac('sha256', 'WebAppData')
     .update(botToken)
     .digest();
 
-  const computed = crypto
+  const computedHash = crypto
     .createHmac('sha256', secretKey)
     .update(dataCheckString)
     .digest('hex');
 
-  if (computed !== hash) {
+  if (computedHash !== hash) {
     return { valid: false, user: null };
   }
 
-  // auth_date freshness (skip if TESTING=1)
-  let authDate = 0;
-  for (const [k, v] of pairs) {
-    if (k === 'auth_date') { authDate = Number(v); break; }
-  }
-  if (!process.env.TESTING) {
-    if (!authDate || Date.now() / 1000 - authDate > 60 * 60 * 24) {
-      return { valid: false, user: null };
-    }
-  }
-
   let user = null;
-  for (const [k, v] of pairs) {
-    if (k === 'user') {
-      try { user = JSON.parse(decodeURIComponent(v)); } catch (_) { user = null; }
-      break;
-    }
+  const userRaw = params.get('user');
+  if (userRaw) {
+    try { user = JSON.parse(userRaw); } catch (_) { user = null; }
   }
 
   return { valid: true, user };
