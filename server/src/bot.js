@@ -70,6 +70,9 @@ async function start(token, url) {
     });
   });
 
+  // All other section commands answer with the button only — no
+  // informational text. The user just taps the button and the Mini App
+  // opens in Telegram.
   const openWithSection = (section) => async (msg) => {
     const chatId = msg.chat.id;
     if (!isAllowed(msg.from.id)) {
@@ -78,7 +81,7 @@ async function start(token, url) {
     if (!webappUrl) {
       return bot.sendMessage(chatId, 'Mini App URL не настроен (WEBAPP_URL).');
     }
-    return bot.sendMessage(chatId, `Открываю раздел «${sectionLabel(section)}»…`, {
+    return bot.sendMessage(chatId, '\u200b', {
       reply_markup: { inline_keyboard: [[webAppButton('📱 Открыть', section)]] }
     });
   };
@@ -87,25 +90,16 @@ async function start(token, url) {
   bot.onText(/^\/orders$/, openWithSection('orders'));
   bot.onText(/^\/advice$/, openWithSection('advice'));
 
+  // /subscribe and /unsubscribe silently toggle the weekly report
+  // subscription. We keep them working but send no chat message — the
+  // toggle can be confirmed next time a weekly report arrives (or not).
   bot.onText(/^\/subscribe$/, (msg) => {
     subscribed.add(msg.from.id);
-    bot.sendMessage(msg.chat.id, '✅ Буду присылать еженедельный отчёт каждое воскресенье в 20:00.');
   });
 
   bot.onText(/^\/unsubscribe$/, (msg) => {
     subscribed.delete(msg.from.id);
-    bot.sendMessage(msg.chat.id, 'Отключил еженедельный отчёт.');
   });
-
-  // expose notification sender for the api
-  global.botNotify = async (userId, text) => {
-    if (!bot) return;
-    try {
-      await bot.sendMessage(userId, text);
-    } catch (e) {
-      console.warn('[bot] notify failed:', e.message);
-    }
-  };
 
   // weekly cron: every Sunday 20:00 send a short report
   cron.schedule('0 20 * * 0', async () => {

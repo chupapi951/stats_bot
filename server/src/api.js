@@ -7,7 +7,7 @@ const cors = require('cors');
 const { authMiddleware } = require('./auth');
 const orders = require('./orders');
 const { buildAdvice } = require('./advice');
-const { fmtMoney, formatDateTimeRu, formatDateRu } = require('./utils');
+const { formatDateTimeRu, formatDateRu } = require('./utils');
 const ws = require('./ws');
 
 function serializeOrder(o) {
@@ -101,9 +101,6 @@ function buildApi(botToken) {
     });
     const payload = serializeOrder(doc);
     ws.broadcast(userId, { type: 'order:new', order: payload });
-    if (global.botNotify) {
-      global.botNotify(userId, `Заказ #${doc.orderId} создан`);
-    }
     res.json(payload);
   });
 
@@ -129,16 +126,6 @@ function buildApi(botToken) {
       if (!o) return res.status(404).json({ error: 'not found' });
       const payload = serializeOrder(o);
       ws.broadcast(userId, { type: 'order:update', order: payload });
-      if (global.botNotify) {
-        const profitText =
-          o.status === 'completed'
-            ? `. Прибыль: ${fmtMoney(o.profit)}`
-            : '';
-        global.botNotify(
-          userId,
-          `Заказ #${o.orderId} переведён в статус «${orders.statusLabel(o.status)}»${profitText}`
-        );
-      }
       res.json(payload);
     } catch (e) {
       res.status(400).json({ error: e.message });
