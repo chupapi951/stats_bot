@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../api.js';
 import { fmtMoney, fmtDate, statusLabel, STATUSES } from '../format.js';
@@ -9,33 +9,40 @@ export default function Orders() {
   const [items, setItems] = useState(null);
   const [status, setStatus] = useState('all');
   const [search, setSearch] = useState('');
-  const timer = useRef(null);
   const nav = useNavigate();
 
-  // useCallback so the order:changed listener always sees the latest
-  // status/search values via refs (not via stale closure).
-  const load = useCallback((s, q) => {
-    const useStatus = s !== undefined ? s : status;
-    const useSearch = q !== undefined ? q : search;
-    setItems(null);
-    api.orders({ status: useStatus, search: useSearch })
-      .then((d) => setItems(d.items || []))
-      .catch(() => setItems([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api]);
-
-  useEffect(() => { load(); }, [load]);
+  // Keep the latest filter values in refs so the order:changed listener
+  // (registered once on mount) always sees the current values without
+  // being re-bound on every render.
+  const statusRef = useRef(status);
+  const searchRef = useRef(search);
+  statusRef.current = status;
+  searchRef.current = search;
 
   useEffect(() => {
-    const onChange = () => load();
+    let cancelled = false;
+    setItems(null);
+    api.orders({ status: statusRef.current, search: searchRef.current })
+      .then((d) => { if (!cancelled) setItems(d.items || []); })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, [status, search, api]);
+
+  useEffect(() => {
+    const onChange = () => {
+      // Re-fetch with the current filters when an order changes.
+      let cancelled = false;
+      setItems(null);
+      api.orders({ status: statusRef.current, search: searchRef.current })
+        .then((d) => { if (!cancelled) setItems(d.items || []); })
+        .catch(() => { if (!cancelled) setItems([]); });
+    };
     window.addEventListener('order:changed', onChange);
     return () => window.removeEventListener('order:changed', onChange);
-  }, [load]);
+  }, [api]);
 
   const onSearch = (v) => {
     setSearch(v);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => load(status, v), 250);
   };
 
   return (
