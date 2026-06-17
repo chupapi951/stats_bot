@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTelegram, isMockMode as _isMockMode } from './telegram.jsx';
 import { mockApi } from './mockApi.js';
 
@@ -119,31 +120,38 @@ function request(method, url, body, ctx) {
 
 export function useApi() {
   const { initData, user } = useTelegram();
-  const ctx = { initData, user };
 
-  return {
-    dashboard: () => request('GET', '/api/dashboard', undefined, ctx),
-    orders: (params = {}) => {
-      const q = new URLSearchParams();
-      if (params.status && params.status !== 'all') q.set('status', params.status);
-      if (params.search) q.set('search', params.search);
-      const qs = q.toString();
-      return request('GET', '/api/orders' + (qs ? '?' + qs : ''), undefined, ctx);
-    },
-    order: (id) => request('GET', `/api/orders/${id}`, undefined, ctx),
-    createOrder: (data) => request('POST', '/api/orders', data, ctx),
-    updateOrder: (id, patch) => request('PATCH', `/api/orders/${id}`, patch, ctx),
-    setStatus: (id, status) => request('POST', `/api/orders/${id}/status`, { status }, ctx),
-    deleteOrder: (id) => request('DELETE', `/api/orders/${id}`, undefined, ctx),
-    weekReport: () => request('GET', '/api/report/week', undefined, ctx),
-    periodReport: (params = {}) => {
-      const q = new URLSearchParams();
-      if (params.from) q.set('from', params.from);
-      if (params.to)   q.set('to',   params.to);
-      return request('GET', '/api/report/period' + (q.toString() ? '?' + q : ''), undefined, ctx);
-    },
-    advice: () => request('GET', '/api/advice', undefined, ctx)
-  };
+  // Memoize on the actual primitive deps (initData string, user object) so
+  // the returned API object stays referentially stable across renders.
+  // Otherwise, any useEffect that lists `api` in its deps would re-fire on
+  // every render, causing an infinite fetch → setState → re-render loop.
+  return useMemo(() => {
+    const ctx = { initData, user };
+    return {
+      dashboard: () => request('GET', '/api/dashboard', undefined, ctx),
+      orders: (params = {}) => {
+        const q = new URLSearchParams();
+        if (params.status && params.status !== 'all') q.set('status', params.status);
+        if (params.search) q.set('search', params.search);
+        const qs = q.toString();
+        return request('GET', '/api/orders' + (qs ? '?' + qs : ''), undefined, ctx);
+      },
+      order: (id) => request('GET', `/api/orders/${id}`, undefined, ctx),
+      createOrder: (data) => request('POST', '/api/orders', data, ctx),
+      updateOrder: (id, patch) => request('PATCH', `/api/orders/${id}`, patch, ctx),
+      setStatus: (id, status) => request('POST', `/api/orders/${id}/status`, { status }, ctx),
+      deleteOrder: (id) => request('DELETE', `/api/orders/${id}`, undefined, ctx),
+      weekReport: () => request('GET', '/api/report/week', undefined, ctx),
+      periodReport: (params = {}) => {
+        const q = new URLSearchParams();
+        if (params.from) q.set('from', params.from);
+        if (params.to)   q.set('to',   params.to);
+        return request('GET', '/api/report/period' + (q.toString() ? '?' + q : ''), undefined, ctx);
+      },
+      advice: () => request('GET', '/api/advice', undefined, ctx)
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initData, user && user.id, user && user.username]);
 }
 
 export { isMockMode };
