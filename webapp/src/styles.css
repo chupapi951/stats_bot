@@ -243,6 +243,57 @@ body { min-height: 100vh; }
 }
 .bar-chart .bar-label { font-size: 11px; color: var(--hint); }
 
+/* Stacked bar (actual green + potential yellow) */
+.bar-chart--stacked { align-items: flex-end; }
+.bar-stack {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse; /* green (actual) above yellow (potential) */
+  min-height: 4px;
+}
+.bar-segment {
+  width: 100%;
+}
+.bar-segment--actual {
+  background: linear-gradient(180deg, #34c759 0%, rgba(52, 199, 89, 0.6) 100%);
+  border-radius: 6px 6px 0 0;
+}
+.bar-segment--potential {
+  background: linear-gradient(180deg, #ffcc00 0%, rgba(255, 204, 0, 0.6) 100%);
+  border-radius: 4px 4px 0 0;
+}
+/* When the actual is the topmost stacked segment, round its top corners */
+.bar-stack > .bar-segment--actual:not(:last-child) { border-radius: 0; }
+
+/* Legend below the bar chart */
+.bar-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  padding: 6px 4px 0;
+  font-size: 12px;
+  color: var(--hint);
+  flex-wrap: wrap;
+}
+.bar-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bar-legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.bar-legend__swatch--actual {
+  background: linear-gradient(180deg, #34c759 0%, rgba(52, 199, 89, 0.6) 100%);
+}
+.bar-legend__swatch--potential {
+  background: linear-gradient(180deg, #ffcc00 0%, rgba(255, 204, 0, 0.6) 100%);
+}
+
 .product {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 0; border-bottom: 1px solid var(--border);

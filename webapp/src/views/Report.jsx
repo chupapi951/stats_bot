@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useApi } from '../api.js';
-import { fmtMoney, fmtMoneyShort, fmtNumber, fmtDayShort } from '../format.js';
+import { fmtMoney, fmtNumber } from '../format.js';
 import PeriodSelector from '../components/PeriodSelector.jsx';
+import BarChart from '../components/BarChart.jsx';
 
 export default function Report() {
   const api = useApi();
@@ -40,15 +41,21 @@ export default function Report() {
   const returnRate = t.returnRate;
   const cmp = data.comparison?.totals || {};
 
+  // Helper to format a number with an optional "potential" sub-line.
+  const withPotential = (value, potential, label) =>
+    potential && Number(potential) > 0
+      ? { label, value, sub: `+${fmtMoney(potential)} потенциал` }
+      : { label, value };
+
   const kpis = [
     { label: 'Заказов',        value: fmtNumber(t.all),       cmp: cmp.all },
     { label: 'Выкуплено',      value: fmtNumber(t.completed), cmp: cmp.completed },
     { label: 'Возвратов',      value: fmtNumber(t.returned),  cmp: cmp.returned,
       sub: `${returnRate}% от всех` },
     { label: 'В доставке',     value: fmtNumber(t.shipped) },
-    { label: 'Выручка',        value: fmtMoney(t.revenue),    cmp: cmp.revenue },
+    withPotential(fmtMoney(t.revenue), t.potentialRevenue, 'Выручка'),
     { label: 'Себестоимость',  value: fmtMoney(t.cost) },
-    { label: 'Чистая прибыль', value: fmtMoney(t.profit),     cmp: cmp.profit, accent: true }
+    withPotential(fmtMoney(t.profit), t.potentialProfit, 'Чистая прибыль')
   ];
 
   return (
@@ -118,32 +125,6 @@ function Delta({ info }) {
     <div className={'kpi-delta ' + (flat ? 'flat' : up ? 'up' : 'down')}>
       {flat ? '→' : up ? '↑' : '↓'} {Math.abs(info.pct).toFixed(1)}%
       <span className="kpi-delta-prev"> vs прошл. период</span>
-    </div>
-  );
-}
-
-function BarChart({ days }) {
-  if (!days.length) return <div className="empty">Нет данных</div>;
-  const max = Math.max(1, ...days.map((d) => d.profit));
-  const barWidth = days.length > 14 ? 22 : days.length > 7 ? 36 : 48;
-  const chartWidth = days.length * (barWidth + 8);
-  return (
-    <div className="bar-chart-scroll">
-      <div className="bar-chart" style={{ minWidth: chartWidth, height: 160 }}>
-        {days.map((d, i) => {
-          const h = Math.max(4, (d.profit / max) * 140);
-          const label = d.from
-            ? new Date(d.from).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
-            : fmtDayShort(d.date);
-          return (
-            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }} title={fmtMoney(d.profit)}>
-              <div className="bar-fill" style={{ height: `${h}px` }} />
-              <div className="bar-label">{label}</div>
-              <div className="bar-value">{fmtMoneyShort(d.profit)}</div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

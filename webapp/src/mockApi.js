@@ -140,18 +140,23 @@ function dashboard() {
   // Revenue / cost / profit counted ONLY for completed orders in the
   // current week. Returned orders are tracked via counts.returned.
   const completed = inWeek.filter((o) => o.status === 'completed');
+  const potential = inWeek.filter((o) => o.status === 'created' || o.status === 'shipped');
   const revenue = round2(completed.reduce((s, o) => s + (o.sellingPrice || 0), 0));
   const cost    = round2(completed.reduce((s, o) => s + (o.costPrice || 0), 0));
   const profit  = round2(completed.reduce((s, o) => s + (o.profit || 0), 0));
+  const potentialRevenue = round2(potential.reduce((s, o) => s + (o.sellingPrice || 0), 0));
+  const potentialProfit  = round2(potential.reduce((s, o) => s + (o.profit || 0), 0));
 
   const profitByDay = [];
   for (let i = 0; i < 7; i += 1) {
     const ds = startOfDay(new Date(wkFrom.getTime() + i * 86400000));
     const de = endOfDay(ds);
     const day = state.orders.filter((o) => o.status === 'completed' && within(o.completedAt || o.createdAt, ds, de));
+    const pot  = state.orders.filter((o) => (o.status === 'created' || o.status === 'shipped') && within(o.createdAt, ds, de));
     profitByDay.push({
       date: ds.toISOString(),
       profit: day.reduce((s, o) => s + (o.profit || 0), 0),
+      potentialProfit: pot.reduce((s, o) => s + (o.profit || 0), 0),
       orders: day.length
     });
   }
@@ -175,6 +180,8 @@ function dashboard() {
       revenue: round2(revenue),
       cost: round2(cost),
       profit: round2(profit),
+      potentialRevenue: potentialRevenue,
+      potentialProfit: potentialProfit,
       profitByDay,
       topProducts: topProducts.map((p) => ({ ...p, profit: round2(p.profit), revenue: round2(p.revenue) })),
       bestDay: bestDay ? { ...bestDay, dateText: new Date(bestDay.date).toLocaleDateString('ru-RU') } : null
@@ -292,14 +299,17 @@ function statsFor(from, to) {
     return t >= from.getTime() && t < to.getTime();
   });
   const counts = { created: 0, shipped: 0, completed: 0, returned: 0 };
-  for (const o of inWeek) counts[o.status] += 1;
-  const all = inWeek.length;
-  // Revenue / cost / profit are counted ONLY for completed orders.
+  for (const o of inRange) counts[o.status] += 1;
+  const all = inRange.length;
+  // Revenue / cost / profit counted ONLY for completed orders.
   // Returned orders are tracked separately in counts.returned + returnRate.
-  const completed = inWeek.filter((o) => o.status === 'completed');
+  const completed = inRange.filter((o) => o.status === 'completed');
+  const potential = inRange.filter((o) => o.status === 'created' || o.status === 'shipped');
   const revenue = round2(completed.reduce((s, o) => s + o.sellingPrice, 0));
   const cost    = round2(completed.reduce((s, o) => s + o.costPrice, 0));
   const profit  = round2(completed.reduce((s, o) => s + (o.profit || 0), 0));
+  const potentialRevenue = round2(potential.reduce((s, o) => s + o.sellingPrice, 0));
+  const potentialProfit  = round2(potential.reduce((s, o) => s + (o.profit || 0), 0));
 
   const productMap = new Map();
   for (const o of inRange) {
@@ -322,10 +332,14 @@ function statsFor(from, to) {
     if (next > to) next.setTime(to.getTime());
     const slice = inRange.filter((o) => o.status === 'completed' &&
       new Date(o.createdAt) >= cursor && new Date(o.createdAt) < next);
+    const pot = inRange.filter((o) =>
+      (o.status === 'created' || o.status === 'shipped') &&
+      new Date(o.createdAt) >= cursor && new Date(o.createdAt) < next);
     profitByDay.push({
       from: cursor.toISOString(),
       to: next.toISOString(),
       profit: round2(slice.reduce((s, o) => s + (o.profit || 0), 0)),
+      potentialProfit: round2(pot.reduce((s, o) => s + (o.profit || 0), 0)),
       orders: slice.length
     });
     cursor = next;
@@ -344,7 +358,8 @@ function statsFor(from, to) {
     totals: {
       all, ...counts,
       returnRate: all > 0 ? round2((counts.returned / all) * 100) : 0,
-      revenue, cost, profit
+      revenue, cost, profit,
+      potentialRevenue, potentialProfit
     },
     profitByDay,
     topProducts,

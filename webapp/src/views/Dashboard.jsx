@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../api.js';
-import { fmtMoney, fmtMoneyShort, fmtNumber, fmtDayShort, statusLabel, fmtDate } from '../format.js';
+import { fmtMoney, fmtNumber, fmtDayShort, statusLabel, fmtDate } from '../format.js';
+import BarChart from '../components/BarChart.jsx';
 import { hapticImpact } from '../telegram.jsx';
 
 export default function Dashboard() {
@@ -25,13 +26,17 @@ export default function Dashboard() {
   if (!data) return <div className="loader">Загрузка…</div>;
 
   const w = data.week;
+  const withPotential = (value, potential) =>
+    potential && Number(potential) > 0
+      ? { value, sub: `+${fmtMoney(potential)} потенциал` }
+      : { value };
   const kpis = [
     { label: 'Всего заказов', value: fmtNumber(w.all), sub: 'за неделю' },
     { label: 'Выкуплено', value: fmtNumber(w.completed) },
     { label: 'В доставке', value: fmtNumber(w.shipped) },
     { label: 'Возвратов', value: fmtNumber(w.returned) },
-    { label: 'Выручка', value: fmtMoney(w.revenue) },
-    { label: 'Прибыль', value: fmtMoney(w.profit), accent: true }
+    { label: 'Выручка', ...withPotential(fmtMoney(w.revenue), w.potentialRevenue) },
+    { label: 'Прибыль',   ...withPotential(fmtMoney(w.profit),  w.potentialProfit), accent: true }
   ];
 
   const bestSub = w.bestDay && w.bestDay.profit > 0
@@ -100,31 +105,5 @@ export default function Dashboard() {
         )}
       </div>
     </>
-  );
-}
-
-function BarChart({ days }) {
-  if (!days.length) return <div className="empty">Нет данных</div>;
-  const max = Math.max(1, ...days.map((d) => d.profit));
-  const barWidth = days.length > 14 ? 22 : days.length > 7 ? 36 : 48;
-  const chartWidth = days.length * (barWidth + 8);
-  return (
-    <div className="bar-chart-scroll">
-      <div className="bar-chart" style={{ minWidth: chartWidth, height: 160 }}>
-        {days.map((d, i) => {
-          const h = Math.max(4, (d.profit / max) * 140);
-          const label = d.from
-            ? new Date(d.from).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
-            : fmtDayShort(d.date);
-          return (
-            <div key={i} className="bar" style={{ width: barWidth, minWidth: barWidth }} title={fmtMoney(d.profit)}>
-              <div className="bar-fill" style={{ height: `${h}px` }} />
-              <div className="bar-label">{label}</div>
-              <div className="bar-value">{fmtMoneyShort(d.profit)}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }

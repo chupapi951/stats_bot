@@ -147,16 +147,22 @@ async function computeStats(userId, from, to) {
   const counts = { created: 0, shipped: 0, completed: 0, returned: 0 };
   for (const r of byStatus) counts[r._id] = r.count;
 
-  // Revenue / cost / profit are counted ONLY for completed orders.
-  // Returned orders must NOT inflate the revenue or the cost — they are
-  // a separate business outcome (handled in counts.returned + returnRate).
+  // Revenue / cost / profit:
+  //   - actual:    counted ONLY for completed orders
+  //   - potential: counted for created + shipped orders (still in pipeline)
+  // Returned orders are tracked separately via counts.returned + returnRate.
   const moneyAgg = await db
     .collection('orders')
     .aggregate([
-      { $match: { ...baseMatch, status: 'completed' } },
+      {
+        $match: {
+          ...baseMatch,
+          status: { $in: ['created', 'shipped', 'completed'] }
+        }
+      },
       {
         $group: {
-          _id: null,
+          _id: '$status',
           revenue: { $sum: '$sellingPrice' },
           cost: { $sum: '$costPrice' },
           profit: { $sum: '$profit' }
@@ -165,10 +171,22 @@ async function computeStats(userId, from, to) {
     ])
     .toArray();
 
-  const moneyRow = moneyAgg[0] || { revenue: 0, cost: 0, profit: 0 };
-  const revenue = moneyRow.revenue || 0;
-  const cost = moneyRow.cost || 0;
-  const profit = moneyRow.profit || 0;
+  const byStatusMoney = { created: { revenue: 0, cost: 0, profit: 0 },
+                           shipped: { revenue: 0, cost: 0, profit: 0 },
+                           completed: { revenue: 0, cost: 0, profit: 0 } };
+  for (const r of moneyAgg) {
+    if (byStatusMoney[r._id]) {
+      byStatusMoney[r._id].revenue = r.revenue || 0;
+      byStatusMoney[r._id].cost = r.cost || 0;
+      byStatusMoney[r._id].profit = r.profit || 0;
+    }
+  }
+
+  const revenue = byStatusMoney.completed.revenue;
+  const cost = byStatusMoney.completed.cost;
+  const profit = byStatusMoney.completed.profit;
+  const potentialRevenue = (byStatusMoney.created.revenue || 0) + (byStatusMoney.shipped.revenue || 0);
+  const potentialProfit  = (byStatusMoney.created.profit  || 0) + (byStatusMoney.shipped.profit  || 0);
 
   // top products by profit (completed only)
   const topProducts = await db
@@ -194,9 +212,13 @@ async function computeStats(userId, from, to) {
       ...counts,
       // return rate as % of all orders in the period
       returnRate: all > 0 ? round2((counts.returned / all) * 100) : 0,
+      // Actual: completed only
       revenue: round2(revenue),
       cost: round2(cost),
-      profit: round2(profit)
+      profit: round2(profit),
+      // Potential: created + shipped (in pipeline)
+      potentialRevenue: round2(potentialRevenue),
+      potentialProfit: round2(potentialProfit)
     },
     topProducts: topProducts.map((p) => ({
       productName: p._id,
@@ -232,26 +254,45 @@ async function profitByBuckets(userId, from, to) {
   const buckets = dayBuckets(from, to);
   const out = [];
   for (const b of buckets) {
+    // Split by status so the bar chart can render actual vs potential stacks.
     const agg = await db
       .collection('orders')
       .aggregate([
         {
           $match: {
             userId,
-            status: 'completed',
+            status: { $in: ['created', 'shipped', 'completed'] },
             createdAt: { $gte: b.from, $lt: b.to }
           }
         },
-        { $group: { _id: null, profit: { $sum: '$profit' }, count: { $sum: 1 } } }
+        {
+          $group: {
+            _id: '$status',
+            profit: { $sum: '$profit' },
+            count: { $sum: 1 }
+          }
+        }
       ])
       .toArray();
+    const byStatus = { created: { profit: 0, count: 0 },
+                       shipped: { profit: 0, count: 0 },
+                       completed: { profit: 0, count: 0 } };
+    for (const r of agg) {
+      if (byStatus[r._id]) {
+        byStatus[r._id].profit = r.profit || 0;
+        byStatus[r._id].count = r.count || 0;
+      }
+    }
+    const actualProfit    = byStatus.completed.profit;
+    const potentialProfit = (byStatus.created.profit || 0) + (byStatus.shipped.profit || 0);
     out.push({
       from: b.from.toISOString(),
       to: b.to.toISOString(),
       date: b.from.toISOString(),
       dateText: b.from.toLocaleDateString('ru-RU'),
-      profit: round2(agg[0]?.profit || 0),
-      orders: agg[0]?.count || 0
+      profit: round2(actualProfit),
+      potentialProfit: round2(potentialProfit),
+      orders: byStatus.completed.count
     });
   }
   return out;
