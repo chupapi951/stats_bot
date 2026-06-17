@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../api.js';
 import { fmtMoney, fmtDate, statusLabel, STATUSES } from '../format.js';
@@ -12,21 +12,25 @@ export default function Orders() {
   const timer = useRef(null);
   const nav = useNavigate();
 
-  const load = (s = status, q = search) => {
+  // useCallback so the order:changed listener always sees the latest
+  // status/search values via refs (not via stale closure).
+  const load = useCallback((s, q) => {
+    const useStatus = s !== undefined ? s : status;
+    const useSearch = q !== undefined ? q : search;
     setItems(null);
-    api.orders({ status: s, search: q })
+    api.orders({ status: useStatus, search: useSearch })
       .then((d) => setItems(d.items || []))
       .catch(() => setItems([]));
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     const onChange = () => load();
     window.addEventListener('order:changed', onChange);
     return () => window.removeEventListener('order:changed', onChange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, search]);
+  }, [load]);
 
   const onSearch = (v) => {
     setSearch(v);

@@ -93,8 +93,16 @@ function mockRequest(method, url, body) {
   }
   if (method === 'GET' && url === '/api/advice') return mockApi.advice();
   if (method === 'GET' && url === '/api/orders') {
-    const u = new URL('http://x' + url + (window.location.search || ''));
-    return mockApi.listOrders({ status: u.searchParams.get('status'), search: u.searchParams.get('search') });
+    // Strip any window.location.search suffix the request may have
+    // picked up (e.g. '?mock=1') so the status/search query params
+    // are read from the API URL itself, not from the page URL.
+    const qIndex = url.indexOf('?');
+    const queryString = qIndex >= 0 ? url.slice(qIndex + 1) : '';
+    const params = new URLSearchParams(queryString);
+    return mockApi.listOrders({
+      status: params.get('status'),
+      search: params.get('search')
+    });
   }
   if (method === 'POST' && url === '/api/orders') return mockApi.createOrder(body);
   if (method === 'DELETE' && m && !m[2]) return mockApi.deleteOrder(m[1]);
