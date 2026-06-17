@@ -1,0 +1,21 @@
+{
+  "name": "stats-bot-server",
+  "version": "1.0.0",
+  "description": "Telegram Mini App backend for order tracking and profit",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "mongodb": "^6.8.0",
+    "mongodb-memory-server": "^10.1.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "ws": "^8.18.0",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
+  }
+}
