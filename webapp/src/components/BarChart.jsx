@@ -2,6 +2,10 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { fmtMoney, fmtMoneyShort } from '../format.js';
 
 const MIN_BAR = 8;
+// Wide enough to fit a short "01.06" date label without overlap.
+// For very long ranges the chart scrolls horizontally.
+const MIN_BAR_FOR_MONTH = 18;
+const MIN_BAR_FOR_LONG_RANGE = 14;
 const MAX_BAR = 56;
 const MAX_BAR_HEIGHT = 190;
 
@@ -29,15 +33,21 @@ export default function BarChart({ days }) {
     ...days.map((d) => (Number(d.profit) || 0) + (Number(d.potentialProfit) || 0))
   );
 
-  const GAP = 8;
-  const available = Math.max(containerWidth - GAP, MIN_BAR);
+  // Pick a minimum bar width that keeps date labels legible at the cost
+  // of horizontal scrolling for long ranges. We prefer the wider minimum
+  // for longer ranges so "01.06" labels don't overlap each other.
+  const minBar = days.length > 24 ? MIN_BAR_FOR_MONTH
+                : days.length > 12 ? MIN_BAR_FOR_LONG_RANGE
+                : MIN_BAR;
+  const GAP = 6;
+  const available = Math.max(containerWidth - GAP, minBar);
   const naturalBar = Math.min(
     MAX_BAR,
-    Math.max(MIN_BAR, Math.floor((available - days.length * GAP) / days.length))
+    Math.max(minBar, Math.floor((available - days.length * GAP) / days.length))
   );
 
   const needsScroll = naturalBar * days.length + GAP * days.length > available;
-  const barWidth = needsScroll ? MIN_BAR : naturalBar;
+  const barWidth = needsScroll ? minBar : naturalBar;
   const chartWidth = days.length * (barWidth + GAP);
 
   return (
@@ -76,7 +86,7 @@ export default function BarChart({ days }) {
                 >
                   {/* Value label sits ABOVE the stack in normal flow. */}
                   {total > 0 && (
-                    <div className="bar-value">{fmtMoneyShort(total)}</div>
+                    <div className={'bar-value' + (days.length > 24 ? ' bar-value--tight' : '')}>{fmtMoneyShort(total)}</div>
                   )}
                   <div className="bar-stack" style={{ height: MAX_BAR_HEIGHT }}>
                     {/* Potential (yellow) on top, actual (green) at the bottom. */}
@@ -89,7 +99,7 @@ export default function BarChart({ days }) {
                       style={{ height: `${hActual}px` }}
                     />
                   </div>
-                  <div className="bar-label">{label}</div>
+                  <div className={'bar-label' + (days.length > 24 ? ' bar-label--tight' : '')}>{label}</div>
                 </div>
               );
             })}
